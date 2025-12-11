@@ -17,9 +17,6 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        // ✅ TAMBAHKAN REPOSITORI JITPACK SEBAGAI JARING PENGAMAN
-        // Supabase biasanya tidak memerlukannya, tetapi ini akan mencegah masalah resolver
-        // jika ada dependensi Ktor atau KMP lainnya yang memerlukan ini.
         maven { url = uri("https://jitpack.io") }
     }
 }

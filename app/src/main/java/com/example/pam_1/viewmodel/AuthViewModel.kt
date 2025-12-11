@@ -13,11 +13,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-// State Auth (Login/Register)
+// State Auth (Login/Register/Reset)
 sealed class AuthUIState {
     object Idle : AuthUIState()
     object Loading : AuthUIState()
     object Success : AuthUIState()
+    object AwaitingOTP : AuthUIState()
+    object AwaitingNewPassword : AuthUIState() // [FIX] State ini wajib ada untuk alur reset password
     data class Error(val message: String) : AuthUIState()
 }
 
@@ -42,13 +44,22 @@ class AuthViewModel(
     var isUpdatingProfile by mutableStateOf(false)
         private set
 
+    // Simpan email untuk verifikasi OTP
+    var pendingEmail by mutableStateOf("")
+        private set
+
+    // Penanda apakah sedang dalam proses Reset Password atau Register biasa
+    var isResetPasswordFlow by mutableStateOf(false)
+        private set
+
+
     // --- AUTH FUNCTIONS ---
 
-    fun login(email: String, pass: String) {
+    fun login(email: String, pass: String, rememberMe: Boolean) {
         viewModelScope.launch {
             authState = AuthUIState.Loading
             try {
-                authRepository.login(email, pass)
+                authRepository.login(email, pass, rememberMe)
                 authState = AuthUIState.Success
             } catch (e: Exception) {
                 authState = AuthUIState.Error(e.message ?: "Login Gagal")
@@ -56,6 +67,7 @@ class AuthViewModel(
         }
     }
 
+    // Register dengan OTP
     fun register(email: String, pass: String, username: String, full_name: String, phone_number: String) {
         viewModelScope.launch {
             authState = AuthUIState.Loading
@@ -66,10 +78,96 @@ class AuthViewModel(
                     full_name = full_name,
                     phone_number = phone_number
                 )
-                authRepository.register(user, pass)
-                authState = AuthUIState.Success
+                authRepository.registerWithOTP(user, pass)
+
+                // Simpan email untuk verifikasi
+                pendingEmail = email
+                isResetPasswordFlow = false // Pastikan ini flow register
+
+                // Set state ke AwaitingOTP
+                authState = AuthUIState.AwaitingOTP
             } catch (e: Exception) {
                 authState = AuthUIState.Error(e.message ?: "Register Gagal")
+            }
+        }
+    }
+
+    // [FIX] Mengirim OTP Reset Password (Recovery)
+    // Nama fungsi disesuaikan agar cocok dengan panggilan di ForgotPasswordScreen
+    fun sendResetPasswordOTP(email: String) {
+        viewModelScope.launch {
+            authState = AuthUIState.Loading
+            try {
+                authRepository.sendPasswordReset(email)
+
+                pendingEmail = email
+                isResetPasswordFlow = true // TANDAI INI ADALAH ALUR RESET PASSWORD
+
+                authState = AuthUIState.AwaitingOTP // Langsung navigasi ke layar OTP
+            } catch (e: Exception) {
+                authState = AuthUIState.Error(e.message ?: "Gagal mengirim kode reset password")
+            }
+        }
+    }
+
+    // [FIX] Verifikasi OTP (Menangani baik Register maupun Reset Password)
+    fun verifyOTP(token: String) {
+        viewModelScope.launch {
+            authState = AuthUIState.Loading
+            try {
+                if (isResetPasswordFlow) {
+                    // ALUR RESET PASSWORD:
+                    // Memanggil fungsi repo yang menggunakan type = OtpType.Email.RECOVERY
+                    authRepository.verifyResetPasswordOTP(pendingEmail, token)
+
+                    // Jika sukses, jangan clear pendingEmail dulu (masih butuh buat update password)
+                    authState = AuthUIState.AwaitingNewPassword
+                } else {
+                    // ALUR SIGNUP:
+                    // Memanggil fungsi repo yang menggunakan type = OtpType.Email.SIGNUP
+                    authRepository.verifyOTP(pendingEmail, token)
+
+                    pendingEmail = "" // Clear email karena sudah selesai
+                    authState = AuthUIState.Success
+                }
+            } catch (e: Exception) {
+                authState = AuthUIState.Error(e.message ?: "Kode OTP Salah atau Kadaluarsa")
+            }
+        }
+    }
+
+    // Kirim ulang OTP
+    fun resendOTP() {
+        viewModelScope.launch {
+            authState = AuthUIState.Loading
+            try {
+                if (isResetPasswordFlow) {
+                    // Kirim ulang untuk alur Reset Password
+                    authRepository.sendPasswordReset(pendingEmail)
+                } else {
+                    // Kirim ulang untuk alur Sign Up
+                    authRepository.resendOTP(pendingEmail)
+                }
+                authState = AuthUIState.AwaitingOTP
+            } catch (e: Exception) {
+                authState = AuthUIState.Error(e.message ?: "Gagal mengirim ulang kode")
+            }
+        }
+    }
+
+    // Update Password Baru (Langkah terakhir Reset Password)
+    fun updatePassword(newPassword: String) {
+        viewModelScope.launch {
+            authState = AuthUIState.Loading
+            try {
+                authRepository.updatePassword(newPassword)
+
+                isResetPasswordFlow = false // Reset penanda alur
+                pendingEmail = ""
+
+                authState = AuthUIState.Success // Sukses total, kembali ke Login
+            } catch (e: Exception) {
+                authState = AuthUIState.Error(e.message ?: "Gagal mengubah password")
             }
         }
     }
@@ -89,10 +187,6 @@ class AuthViewModel(
 
     // --- PROFILE FUNCTIONS ---
 
-    /**
-     * Fetch user profile dari database
-     * Dipanggil saat masuk ke ProfileScreen
-     */
     fun fetchUserProfile() {
         viewModelScope.launch {
             _profileState.value = ProfileUIState.Loading
@@ -107,13 +201,6 @@ class AuthViewModel(
         }
     }
 
-    /**
-     * Simpan perubahan profile user
-     * Flow:
-     * 1. Upload foto baru (jika ada)
-     * 2. Update data user ke database
-     * 3. Update state di UI
-     */
     fun saveProfileChanges(
         username: String,
         fullName: String,
@@ -169,10 +256,6 @@ class AuthViewModel(
         }
     }
 
-    /**
-     * Refresh profile data
-     * Berguna saat kembali dari EditProfileScreen
-     */
     fun refreshProfile() {
         fetchUserProfile()
     }

@@ -7,13 +7,11 @@ plugins {
 
 android {
     namespace = "com.example.pam_1"
-    // ✅ FIX: Menggunakan API level 35 yang stabil
     compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.pam_1"
         minSdk = 26
-        // ✅ FIX: TargetSdk juga disesuaikan
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
@@ -28,6 +26,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 
@@ -36,7 +35,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
     }
 
-    // ✅ Sudah benar menggunakan DSL baru
     kotlin {
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
@@ -91,6 +89,11 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.androidx.material3)
+    implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.compose.foundation.layout)
+    implementation(libs.androidx.compose.testing)
+    implementation(libs.androidx.tools.core)
 
     // Testing
     testImplementation(libs.junit)

@@ -1,5 +1,5 @@
 [versions]
-agp = "8.13.1"
+agp = "8.13.2"
 coilCompose = "2.7.0"
 kotlin = "2.2.21"
 coreKtx = "1.17.0"
@@ -28,6 +28,11 @@ ktor = "3.3.3"
 kotlinxSerialization = "1.9.0"
 kotlinxCoroutines = "1.10.2"
 navigationCompose = "2.9.6"
+material3 = "1.4.0"
+datastorePreferences = "1.1.1"
+foundationLayout = "1.10.0"
+composeTesting = "1.0.0-alpha09"
+toolsCore = "1.0.0-alpha13"
 
 
 [libraries]
@@ -78,7 +83,11 @@ kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
-
+androidx-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3" }
+androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastorePreferences" }
+androidx-compose-foundation-layout = { group = "androidx.compose.foundation", name = "foundation-layout", version.ref = "foundationLayout" }
+androidx-compose-testing = { group = "androidx.xr.compose", name = "compose-testing", version.ref = "composeTesting" }
+androidx-tools-core = { group = "androidx.privacysandbox.tools", name = "tools-core", version.ref = "toolsCore" }
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }

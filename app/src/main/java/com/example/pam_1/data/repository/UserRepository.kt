@@ -8,6 +8,7 @@ import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.util.Locale.filter
 
 class UserRepository {
 
@@ -16,7 +17,7 @@ class UserRepository {
     private val bucket = "profile"
 
     /**
-     * Fetch user profile dari database
+     * Fetch user profile dari database public.users
      */
     suspend fun getCurrentUserProfile(): User {
         return withContext(Dispatchers.IO) {
@@ -26,12 +27,10 @@ class UserRepository {
             try {
                 println("🔍 Fetching user profile for ID: $currentUserId")
 
-                // ✅ CRITICAL FIX: Pakai "user_id", BUKAN "id"
-                // Karena di database kolom primary key bernama "user_id"
                 val response = supabase.postgrest[userTable]
                     .select {
                         filter {
-                            eq("user_id", currentUserId)  // ← UBAH DARI "id" KE "user_id"
+                            eq("user_id", currentUserId)
                         }
                     }
 
@@ -46,7 +45,6 @@ class UserRepository {
                 val user = users.first()
                 println("✅ User profile loaded: ${user.username}")
 
-                // Pastikan photo_profile tidak null
                 user.copy(
                     photo_profile = user.photo_profile.takeIf { !it.isNullOrBlank() } ?: DEFAULT_AVATAR
                 )
@@ -60,7 +58,8 @@ class UserRepository {
     }
 
     /**
-     * Update profile user ke database
+     * Update profile user ke database public.users
+     * ✅ FIX: Update + Fetch terpisah untuk menghindari RLS issue
      */
     suspend fun updateUserProfile(user: User): User {
         return withContext(Dispatchers.IO) {
@@ -69,30 +68,41 @@ class UserRepository {
 
                 println("🔄 Updating user profile for ID: $userId")
 
-                val dataToUpdate = mapOf<String, Any?>(
-                    "username" to user.username,
-                    "full_name" to user.full_name,
-                    "phone_number" to user.phone_number,
-                    "bio" to user.bio,
-                    "photo_profile" to user.photo_profile
+                // ✅ STEP 1: Update data menggunakan DTO
+                val updateData = User(
+                    username = user.username,
+                    full_name = user.full_name,
+                    phone_number = user.phone_number,
+                    bio = user.bio,
+                    photo_profile = user.photo_profile
                 )
 
-                // ✅ CRITICAL FIX: Pakai "user_id", BUKAN "id"
-                val response = supabase.postgrest[userTable]
-                    .update(dataToUpdate) {
+                // Update tanpa expect return data
+                supabase.postgrest[userTable]
+                    .update(updateData) {
                         filter {
-                            eq("user_id", userId)  // ← UBAH DARI "id" KE "user_id"
+                            eq("user_id", userId)
+                        }
+                    }
+
+                println("✅ Update executed successfully")
+
+                // ✅ STEP 2: Fetch data terbaru setelah update
+                val response = supabase.postgrest[userTable]
+                    .select {
+                        filter {
+                            eq("user_id", userId)
                         }
                     }
 
                 val updatedUsers = response.decodeList<User>()
 
                 if (updatedUsers.isEmpty()) {
-                    throw Exception("User tidak ditemukan saat update")
+                    throw Exception("User tidak ditemukan setelah update")
                 }
 
                 val updatedUser = updatedUsers.first()
-                println("✅ User profile updated successfully")
+                println("✅ User profile fetched after update: ${updatedUser.username}")
 
                 updatedUser.copy(
                     photo_profile = updatedUser.photo_profile.takeIf { !it.isNullOrBlank() } ?: DEFAULT_AVATAR

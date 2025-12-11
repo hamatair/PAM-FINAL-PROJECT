@@ -6,15 +6,16 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,6 +24,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -35,7 +37,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(navController: NavController, viewModel: AuthViewModel) {
 
@@ -45,21 +46,28 @@ fun ProfileScreen(navController: NavController, viewModel: AuthViewModel) {
     val scope = rememberCoroutineScope()
 
     // --- STATE MODE EDIT ---
-    // false = Mode Lihat, true = Mode Edit
     var isEditing by remember { mutableStateOf(false) }
     var showDownloadDialog by remember { mutableStateOf(false) }
 
-    // --- STATE DATA FORM (Untuk Edit) ---
-    var username by remember { mutableStateOf("") }
-    var fullName by remember { mutableStateOf("") }
-    var phone by remember { mutableStateOf("") }
+    // --- STATE DATA FORM ---
+    var firstName by remember { mutableStateOf("") }
+    var lastName by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var phoneNumber by remember { mutableStateOf("") }
     var bio by remember { mutableStateOf("") }
+
+    // --- STATE VALIDASI ERROR ---
+    var firstNameError by remember { mutableStateOf(false) }
+    var lastNameError by remember { mutableStateOf(false) }
+    var phoneNumberError by remember { mutableStateOf(false) }
+    var bioError by remember { mutableStateOf(false) }
 
     // State Foto
     var photoUrl by remember { mutableStateOf<String?>(null) }
-    var photoBytes by remember { mutableStateOf<ByteArray?>(null) } // Jika user pilih foto baru
+    var photoBytes by remember { mutableStateOf<ByteArray?>(null) }
+    var displayName by remember { mutableStateOf("") }
+    var username by remember { mutableStateOf("") }
 
-    // --- PHOTO PICKER (Untuk Mode Edit) ---
     val pickPhotoLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri ->
@@ -74,263 +82,447 @@ fun ProfileScreen(navController: NavController, viewModel: AuthViewModel) {
     }
 
     // --- SINKRONISASI DATA ---
-    // Setiap kali profileState sukses atau mode edit dibatalkan, reset form ke data asli
     LaunchedEffect(profileState, isEditing) {
         if (profileState is ProfileUIState.Success) {
             val user = (profileState as ProfileUIState.Success).user
-            // Hanya update state lokal jika kita TIDAK sedang mengedit (untuk reset)
-            // atau jika baru pertama kali load
             if (!isEditing) {
+                // Pisah full_name dari spasi
+                val nameParts = user.full_name.trim().split(" ", limit = 2)
+                firstName = nameParts.getOrNull(0) ?: "-"
+                lastName = nameParts.getOrNull(1) ?: "-"
+
                 username = user.username
-                fullName = user.full_name
-                phone = user.phone_number
-                bio = user.bio ?: ""
+                email = user.username // Email lengkap dari username
+                phoneNumber = user.phone_number
+                bio = user.bio ?: "-"
                 photoUrl = user.photo_profile
-                photoBytes = null // Reset foto baru jika batal edit
+                displayName = user.full_name.ifEmpty { "-" }
+                photoBytes = null
+
+                // Reset error
+                firstNameError = false
+                lastNameError = false
+                phoneNumberError = false
+                bioError = false
             }
         }
     }
 
-    // Fetch awal
     LaunchedEffect(Unit) {
         viewModel.fetchUserProfile()
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(if (isEditing) "Edit Profil" else "Profil Saya") },
-                actions = {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.TopCenter
+    ) {
+        when (val state = profileState) {
+            is ProfileUIState.Loading -> {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            }
+            is ProfileUIState.Error -> {
+                Column(
+                    modifier = Modifier.padding(16.dp).align(Alignment.Center),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("❌ ${state.message}", color = MaterialTheme.colorScheme.error)
+                    Button(onClick = { viewModel.fetchUserProfile() }) { Text("Coba Lagi") }
+                }
+            }
+            is ProfileUIState.Success -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(24.dp)
+                ) {
+                    Spacer(Modifier.height(64.dp))
+
+                    // PERBAIKAN: Pisahkan struktur untuk mode edit dan non-edit
                     if (isEditing) {
-                        // --- MODE EDIT: Tombol Batal & Simpan ---
-                        IconButton(onClick = { isEditing = false }) {
-                            Icon(Icons.Default.Close, contentDescription = "Batal", tint = MaterialTheme.colorScheme.error)
-                        }
-                        IconButton(
-                            onClick = {
-                                viewModel.saveProfileChanges(
-                                    username, fullName, phone, bio, photoBytes,
-                                    onSuccess = {
-                                        Toast.makeText(context, "Profil diperbarui", Toast.LENGTH_SHORT).show()
-                                        isEditing = false // Kembali ke mode lihat
-                                    },
-                                    onError = { msg ->
-                                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                                    }
-                                )
-                            },
-                            enabled = !isUpdating
+                        // Mode Edit: Cancel & Save di row teratas
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            if (isUpdating) {
-                                CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
-                            } else {
-                                Icon(Icons.Default.Check, contentDescription = "Simpan", tint = MaterialTheme.colorScheme.primary)
+
+                            // ==== BACK BUTTON (LEFT) ====
+                            IconButton(onClick = { isEditing = false }) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            }
+
+                            // ==== CANCEL & CONFIRM (RIGHT) ====
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+
+                                // CANCEL BUTTON
+                                IconButton(onClick = {
+                                    isEditing = false
+                                    if (profileState is ProfileUIState.Success) {
+                                        val user = (profileState as ProfileUIState.Success).user
+                                        val nameParts = user.full_name.trim().split(" ", limit = 2)
+                                        firstName = nameParts.getOrNull(0) ?: "-"
+                                        lastName = nameParts.getOrNull(1) ?: "-"
+                                        phoneNumber = user.phone_number
+                                        bio = user.bio ?: "-"
+                                        photoBytes = null
+                                    }
+                                }) {
+                                    Icon(Icons.Default.Close, contentDescription = "Batal")
+                                }
+
+                                // CONFIRM BUTTON
+                                IconButton(
+                                    onClick = {
+                                        firstNameError = false
+                                        lastNameError = false
+                                        phoneNumberError = false
+                                        bioError = false
+                                        var isValid = true
+
+                                        if (firstName.isBlank() || firstName == "-") {
+                                            firstNameError = true; isValid = false
+                                        }
+                                        if (lastName.isBlank() || lastName == "-") {
+                                            lastNameError = true; isValid = false
+                                        }
+                                        if (phoneNumber.isBlank() || phoneNumber == "-") {
+                                            phoneNumberError = true; isValid = false
+                                        }
+                                        if (bio.isBlank() || bio == "-") {
+                                            bioError = true; isValid = false
+                                        }
+
+                                        if (isValid) {
+                                            val fullName = "$firstName $lastName"
+                                            viewModel.saveProfileChanges(
+                                                username,
+                                                fullName,
+                                                phoneNumber,
+                                                bio,
+                                                photoBytes,
+                                                onSuccess = {
+                                                    Toast.makeText(context, "Profil diperbarui", Toast.LENGTH_SHORT).show()
+                                                    isEditing = false
+                                                    viewModel.fetchUserProfile()
+                                                },
+                                                onError = { msg ->
+                                                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                                }
+                                            )
+                                        } else {
+                                            Toast.makeText(context, "Semua field harus diisi", Toast.LENGTH_SHORT).show()
+                                        }
+                                    },
+                                    enabled = !isUpdating
+                                ) {
+                                    if (isUpdating) {
+                                        CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                                    } else {
+                                        Icon(Icons.Default.Check, contentDescription = "Simpan")
+                                    }
+                                }
                             }
                         }
-                    } else {
-                        // --- MODE LIHAT: Tombol Refresh, Edit, Logout ---
-                        IconButton(onClick = { viewModel.refreshProfile() }) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Refresh")
-                        }
-                        IconButton(onClick = { isEditing = true }) {
-                            Icon(Icons.Default.Edit, contentDescription = "Edit Mode")
-                        }
-                        IconButton(onClick = {
-                            viewModel.logout {
-                                navController.navigate("login") { popUpTo(0) { inclusive = true } }
-                            }
-                        }) {
-                            Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Logout", tint = MaterialTheme.colorScheme.error)
-                        }
-                    }
-                }
-            )
-        }
-    ) { padding ->
+                        Spacer(Modifier.height(16.dp))
 
-        // Container Utama
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            contentAlignment = Alignment.TopCenter
-        ) {
-            when (val state = profileState) {
-                is ProfileUIState.Loading -> {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
-                }
-                is ProfileUIState.Error -> {
-                    Column(
-                        modifier = Modifier.padding(16.dp).align(Alignment.Center),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text("❌ ${state.message}", color = MaterialTheme.colorScheme.error)
-                        Button(onClick = { viewModel.fetchUserProfile() }) { Text("Coba Lagi") }
-                    }
-                }
-                is ProfileUIState.Success -> {
-                    // --- CONTENT UTAMA ---
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
-                            .padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        // 1. Logic Gambar
-                        val finalImageUrl = remember(photoUrl, photoBytes) {
-                            if (photoBytes != null) photoBytes else "${photoUrl}?t=${System.currentTimeMillis()}"
-                        }
+                        // Foto Profil di row kedua (centered)
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Box(contentAlignment = Alignment.BottomEnd) {
+                                val finalImageUrl = remember(photoUrl, photoBytes) {
+                                    if (photoBytes != null) photoBytes else "${photoUrl}?t=${System.currentTimeMillis()}"
+                                }
 
-                        Box(contentAlignment = Alignment.BottomEnd) {
-                            AsyncImage(
-                                model = ImageRequest.Builder(context)
-                                    .data(finalImageUrl)
-                                    .crossfade(true)
-                                    .placeholder(android.R.drawable.ic_menu_gallery)
-                                    .error(android.R.drawable.ic_menu_report_image)
-                                    .build(),
-                                contentDescription = "Foto Profil",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .size(140.dp)
-                                    .clip(CircleShape)
-                                    .clickable {
-                                        if (isEditing) {
-                                            // Mode Edit: Ganti Gambar
+                                AsyncImage(
+                                    model = ImageRequest.Builder(context)
+                                        .data(finalImageUrl)
+                                        .crossfade(true)
+                                        .placeholder(android.R.drawable.ic_menu_gallery)
+                                        .error(android.R.drawable.ic_menu_report_image)
+                                        .build(),
+                                    contentDescription = "Foto Profil",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .size(120.dp)
+                                        .clip(CircleShape)
+                                        .clickable {
                                             pickPhotoLauncher.launch(
                                                 PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                                             )
-                                        } else {
-                                            // Mode Lihat: Tampilkan Popup Download
-                                            showDownloadDialog = true
                                         }
-                                    }
-                            )
+                                )
 
-                            // Ikon kecil indikator edit pada foto
-                            if (isEditing) {
                                 Surface(
                                     shape = CircleShape,
                                     color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(36.dp).offset(x = (-4).dp, y = (-4).dp)
+                                    modifier = Modifier.size(32.dp).offset(x = 4.dp, y = 4.dp)
                                 ) {
-                                    Icon(
-                                        Icons.Default.Edit,
-                                        contentDescription = "Ganti Foto",
-                                        tint = Color.White,
-                                        modifier = Modifier.padding(8.dp)
-                                    )
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "📷",
+                                            style = MaterialTheme.typography.labelSmall
+                                        )
+                                    }
                                 }
                             }
                         }
+                    } else {
+                        // Mode Non-Edit: Back button & Foto Profil
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(
+                                onClick = { navController.popBackStack() },
+                                modifier = Modifier.align(Alignment.Top)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "Back"
+                                )
+                            }
 
-                        Spacer(Modifier.height(8.dp))
-
-                        // Hint text di bawah foto
-                        Text(
-                            text = if (isEditing) "Ketuk foto untuk mengganti" else "Ketuk foto untuk opsi unduh",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-
-                        Spacer(Modifier.height(24.dp))
-
-                        // 2. Form Fields (Editable vs ReadOnly)
-                        ProfileTextField(
-                            value = username,
-                            onValueChange = { username = it },
-                            label = "Username",
-                            isEditing = isEditing
-                        )
-                        ProfileTextField(
-                            value = fullName,
-                            onValueChange = { fullName = it },
-                            label = "Nama Lengkap",
-                            isEditing = isEditing
-                        )
-                        ProfileTextField(
-                            value = phone,
-                            onValueChange = { phone = it },
-                            label = "Nomor HP",
-                            isEditing = isEditing
-                        )
-                        ProfileTextField(
-                            value = bio,
-                            onValueChange = { bio = it },
-                            label = "Bio",
-                            isEditing = isEditing,
-                            singleLine = false,
-                            maxLines = 3
-                        )
-                    }
-
-                    // --- DIALOG UNDUH (Popup Instagram Style) ---
-                    if (showDownloadDialog) {
-                        AlertDialog(
-                            onDismissRequest = { showDownloadDialog = false },
-                            title = { Text("Foto Profil") },
-                            text = { Text("Apakah Anda ingin mengunduh foto profil ini ke galeri?") },
-                            confirmButton = {
-                                TextButton(
-                                    onClick = {
-                                        showDownloadDialog = false
-                                        // Proses Download
-                                        scope.launch {
-                                            state.user.photo_profile?.let { url ->
-                                                val success = FileUtils.downloadImage(context, url)
-                                                Toast.makeText(
-                                                    context,
-                                                    if (success) "Foto tersimpan di galeri" else "Gagal mengunduh",
-                                                    Toast.LENGTH_SHORT
-                                                ).show()
-                                            }
-                                        }
+                            // Foto Profil di Tengah
+                            Box(
+                                modifier = Modifier.weight(1f),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Box(contentAlignment = Alignment.BottomEnd) {
+                                    val finalImageUrl = remember(photoUrl, photoBytes) {
+                                        if (photoBytes != null) photoBytes else "${photoUrl}?t=${System.currentTimeMillis()}"
                                     }
-                                ) { Text("Unduh") }
-                            },
-                            dismissButton = {
-                                TextButton(onClick = { showDownloadDialog = false }) {
-                                    Text("Batal")
+
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(context)
+                                            .data(finalImageUrl)
+                                            .crossfade(true)
+                                            .placeholder(android.R.drawable.ic_menu_gallery)
+                                            .error(android.R.drawable.ic_menu_report_image)
+                                            .build(),
+                                        contentDescription = "Foto Profil",
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier
+                                            .size(120.dp)
+                                            .clip(CircleShape)
+                                            .clickable {
+                                                showDownloadDialog = true
+                                            }
+                                    )
                                 }
                             }
+
+                            // Spacer untuk balance layout
+                            Spacer(modifier = Modifier.width(48.dp))
+                        }
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+
+                    // Display Name (Hanya tampil saat tidak edit)
+                    if (!isEditing) {
+                        Text(
+                            text = displayName,
+                            style = MaterialTheme.typography.headlineSmall,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(Modifier.height(24.dp))
+                    } else {
+                        Spacer(Modifier.height(16.dp))
+                    }
+
+                    // --- FORM FIELDS ---
+
+                    // First Name & Last Name (Side by Side)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // First Name
+                        Column(modifier = Modifier.weight(1f)) {
+                            OutlinedTextField(
+                                value = firstName,
+                                onValueChange = {
+                                    firstName = it
+                                    firstNameError = false
+                                },
+                                label = { Text("First name") },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = isEditing,
+                                singleLine = true,
+                                isError = firstNameError,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                                    disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                                    disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            )
+                        }
+
+                        // Last Name
+                        Column(modifier = Modifier.weight(1f)) {
+                            OutlinedTextField(
+                                value = lastName,
+                                onValueChange = {
+                                    lastName = it
+                                    lastNameError = false
+                                },
+                                label = { Text("Last name") },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = isEditing,
+                                singleLine = true,
+                                isError = lastNameError,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                                    disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                                    disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+
+                    // Email (Always Read Only)
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = { },
+                        label = { Text("Email") },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = false,
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                            disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    )
+
+                    Spacer(Modifier.height(16.dp))
+
+                    // Phone Number
+                    OutlinedTextField(
+                        value = phoneNumber,
+                        onValueChange = { input ->
+                            if (input.all { it.isDigit() } || input.isEmpty() || input == "-") {
+                                phoneNumber = input
+                                phoneNumberError = false
+                            }
+                        },
+                        label = { Text("Phone Number") },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = isEditing,
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        isError = phoneNumberError,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                            disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    )
+
+                    Spacer(Modifier.height(16.dp))
+
+                    // Bio
+                    OutlinedTextField(
+                        value = bio,
+                        onValueChange = {
+                            bio = it
+                            bioError = false
+                        },
+                        label = { Text("Bio") },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = isEditing,
+                        singleLine = false,
+                        maxLines = 3,
+                        isError = bioError,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                            disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    )
+
+                    Spacer(Modifier.height(8.dp))
+
+                    // Text "Edit profile" (di kiri bawah field terakhir, hanya saat tidak edit)
+                    if (!isEditing) {
+                        Text(
+                            text = "Edit profile",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.clickable { isEditing = true }
                         )
                     }
+
+                    Spacer(Modifier.height(24.dp))
+
+                    // Tombol Logout (hanya tampil saat tidak edit)
+                    if (!isEditing) {
+                        Button(
+                            onClick = {
+                                viewModel.logout {
+                                    navController.navigate("login") {
+                                        popUpTo(0) { inclusive = true }
+                                    }
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            shape = MaterialTheme.shapes.medium,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary
+                            )
+                        ) {
+                            Text("Logout", style = MaterialTheme.typography.labelLarge)
+                        }
+                    }
+                }
+
+                // Dialog Download Foto
+                if (showDownloadDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showDownloadDialog = false },
+                        title = { Text("Foto Profil") },
+                        text = { Text("Apakah Anda ingin mengunduh foto profil ini ke galeri?") },
+                        confirmButton = {
+                            TextButton(
+                                onClick = {
+                                    showDownloadDialog = false
+                                    scope.launch {
+                                        state.user.photo_profile?.let { url ->
+                                            val success = FileUtils.downloadImage(context, url)
+                                            Toast.makeText(
+                                                context,
+                                                if (success) "Foto tersimpan di galeri" else "Gagal mengunduh",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                    }
+                                }
+                            ) { Text("Unduh") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showDownloadDialog = false }) {
+                                Text("Batal")
+                            }
+                        }
+                    )
                 }
             }
         }
-    }
-}
-
-// Komponen Custom TextField agar lebih rapi
-@Composable
-fun ProfileTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    label: String,
-    isEditing: Boolean,
-    singleLine: Boolean = true,
-    maxLines: Int = 1
-) {
-    Column(modifier = Modifier.padding(bottom = 16.dp)) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            label = { Text(label) },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = isEditing, // KUNCI: Hanya bisa diketik jika mode edit
-            singleLine = singleLine,
-            maxLines = maxLines,
-            // Styling agar saat mode 'Lihat' terlihat bersih tapi tetap terbaca
-            colors = OutlinedTextFieldDefaults.colors(
-                disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                disabledBorderColor = Color.Transparent, // Hilangkan border saat mode lihat (opsional)
-                disabledLabelColor = MaterialTheme.colorScheme.primary,
-                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f) // Sedikit background
-            ),
-            shape = MaterialTheme.shapes.medium
-        )
     }
 }

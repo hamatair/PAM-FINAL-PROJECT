@@ -1,30 +1,46 @@
 package com.example.pam_1.data.repository
 
+import android.content.Context
+import com.example.pam_1.data.DataStoreManager
 import com.example.pam_1.data.SupabaseClient
 import com.example.pam_1.data.model.User
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.postgrest.from
+import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import io.github.jan.supabase.auth.OtpType // Tetap perlukan untuk verifikasi
 
-class AuthRepository {
+class AuthRepository(context: Context) {
 
     private val supabase = SupabaseClient.client
+    private val dataStoreManager = DataStoreManager(context)
 
-    fun isUserLoggedIn(): Boolean {
-        return supabase.auth.currentSessionOrNull() != null
+    // ... (Fungsi-fungsi lama: isUserLoggedIn, login, registerWithOTP) ...
+
+    suspend fun isUserLoggedIn(): Boolean {
+        val hasSession = supabase.auth.currentSessionOrNull() != null
+        val rememberMe = dataStoreManager.rememberMeFlow.first()
+
+        if (!rememberMe && hasSession) {
+            logout()
+            return false
+        }
+
+        return hasSession && rememberMe
     }
 
-    suspend fun login(email: String, pass: String) {
+    suspend fun login(email: String, pass: String, rememberMe: Boolean) {
         supabase.auth.signInWith(Email) {
             this.email = email
-            password = pass
+            this.password = pass
         }
+
+        dataStoreManager.saveRememberMe(rememberMe)
     }
 
-    suspend fun register(user: User, pass: String) {
-        // Kirim SEMUA data user lewat raw_user_meta_data
+    suspend fun registerWithOTP(user: User, pass: String) {
         val metadata = buildJsonObject {
             put("username", JsonPrimitive(user.username))
             put("full_name", JsonPrimitive(user.full_name))
@@ -34,26 +50,69 @@ class AuthRepository {
         supabase.auth.signUpWith(Email) {
             email = user.email
             password = pass
-            // Metadata ini akan ditangkap oleh trigger SQL
-            this.data = metadata
+            data = metadata
         }
+    }
 
-        // Trigger SQL otomatis insert ke tabel public.users
+    // Verifikasi OTP (untuk SIGNUP)
+    suspend fun verifyOTP(email: String, token: String) {
+        supabase.auth.verifyEmailOtp(
+            type = OtpType.Email.EMAIL,
+            email = email,
+            token = token
+        )
+    }
+
+    // Kirim ulang OTP (untuk SIGNUP)
+    suspend fun resendOTP(email: String) {
+        supabase.auth.signUpWith(Email) {
+            this.email = email
+        }
     }
 
     suspend fun logout() {
         supabase.auth.signOut()
+        dataStoreManager.saveRememberMe(false)
     }
 
     suspend fun testConnection(): Boolean {
         return try {
-            val res = supabase.from("users")
-                .select()
+            val res = supabase.from("users").select()
             println("Supabase Connected: ${res.data}")
             true
         } catch (e: Exception) {
             println("Supabase Error: ${e.message}")
             false
+        }
+    }
+
+    // ========================================
+    // FUNGSI RESET PASSWORD (Menggunakan resetPasswordForEmail)
+    // ========================================
+
+    // 1. Mengirim Kode Reset Password (Asumsi template Supabase sudah diubah menjadi OTP)
+    suspend fun sendPasswordReset(email: String) {
+        // Ini akan mengirim email dengan token/kode ke user.
+        supabase.auth.resetPasswordForEmail(email)
+    }
+
+    // 2. Verifikasi Kode Reset Password
+    // Kita tetap harus menggunakan verifyEmailOtp dengan tipe RECOVERY
+    // karena ini adalah fungsi yang memvalidasi kode dan mengaktifkan sesi sementara
+    // untuk update password.
+    suspend fun verifyResetPasswordOTP(email: String, token: String) {
+        supabase.auth.verifyEmailOtp(
+            type = OtpType.Email.RECOVERY,
+            email = email,
+            token = token
+        )
+    }
+
+    // 3. Update Password Baru
+    suspend fun updatePassword(newPassword: String) {
+        // Hanya bisa dipanggil setelah verifyResetPasswordOTP berhasil
+        supabase.auth.updateUser {
+            password = newPassword
         }
     }
 }
