@@ -20,36 +20,34 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavController
 import com.example.pam_1.navigations.NavigationItem
 import com.example.pam_1.ui.common.AnimatedBottomNavigationBar
-import com.example.pam_1.viewmodel.AuthViewModel
 import com.example.pam_1.ui.theme.PrimaryBrown
+import com.example.pam_1.viewmodel.AuthViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppToolbar(navController: NavController) {
     TopAppBar(
-        title = {
-            Text(
-                text = "PAM App",
-                style = MaterialTheme.typography.titleLarge,
-                color = PrimaryBrown
-            )
-        },
-        actions = {
-            IconButton(onClick = { navController.navigate("profile") }) {
-                Icon(Icons.Filled.Person, contentDescription = "profile", tint = PrimaryBrown)
-            }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.background
-        )
+            title = {
+                Text(
+                        text = "PAM App",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = PrimaryBrown
+                )
+            },
+            actions = {
+                IconButton(onClick = { navController.navigate("profile") }) {
+                    Icon(Icons.Filled.Person, contentDescription = "profile", tint = PrimaryBrown)
+                }
+            },
+            colors =
+                    TopAppBarDefaults.topAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.background
+                    )
     )
 }
 
 @Composable
-fun MainAppScreen(
-    navController: NavController,
-    viewModel: AuthViewModel
-) {
+fun MainAppScreen(navController: NavController, viewModel: AuthViewModel) {
     // state lokal untuk tab saat ini (string route seperti "tugas")
     var currentTab by remember { mutableStateOf(NavigationItem.Tugas.route) }
 
@@ -58,27 +56,28 @@ fun MainAppScreen(
     // Tapi sederhana: default = tugas (seperti sebelumnya).
 
     Scaffold(
-        topBar = { AppToolbar(navController) },
-        bottomBar = {
-            AnimatedBottomNavigationBar(
-                currentTab = currentTab,
-                onTabSelected = { selected ->
-                    currentTab = selected
-                }
-            )
-        }
+            topBar = { AppToolbar(navController) },
+            bottomBar = {
+                AnimatedBottomNavigationBar(
+                        currentTab = currentTab,
+                        onTabSelected = { selected -> currentTab = selected }
+                )
+            }
     ) { innerPadding ->
         Box(
-            modifier = Modifier
-                .padding(innerPadding)
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background),
-            contentAlignment = Alignment.Center
+                modifier =
+                        Modifier.padding(innerPadding)
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.background),
+                contentAlignment = Alignment.Center
         ) {
             when (currentTab) {
                 NavigationItem.Tugas.route -> DummyScreen("Halaman Tugas")
                 NavigationItem.Keuangan.route -> DummyScreen("Halaman Keuangan")
-                NavigationItem.Grup.route -> DummyScreen("Halaman Grup")
+                NavigationItem.Grup.route -> {
+                    // Navigate to Study Groups instead of showing dummy screen
+                    LaunchedEffect(Unit) { navController.navigate("study_groups") }
+                }
                 NavigationItem.Catatan.route -> DummyScreen("Halaman Catatan")
                 NavigationItem.Event.route -> DummyScreen("Halaman Event")
                 else -> DummyScreen("Halaman Tugas")
@@ -87,22 +86,21 @@ fun MainAppScreen(
     }
 }
 
-
-
-
 // Komponen Sementara untuk test navigasi
 @Composable
 fun DummyScreen(title: String) {
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background), // Pastikan background terang (Beige/White)
-        contentAlignment = Alignment.Center
+            modifier =
+                    Modifier.fillMaxSize()
+                            .background(
+                                    MaterialTheme.colorScheme.background
+                            ), // Pastikan background terang (Beige/White)
+            contentAlignment = Alignment.Center
     ) {
         Text(
-            text = title,
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onBackground
+                text = title,
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onBackground
         )
     }
 }

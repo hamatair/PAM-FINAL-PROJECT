@@ -1,0 +1,174 @@
+package com.example.pam_1.data.repository
+
+import com.example.pam_1.data.SupabaseClient
+import com.example.pam_1.data.model.GroupMember
+import com.example.pam_1.data.model.GroupRole
+import io.github.jan.supabase.postgrest.from
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+class GroupMemberRepository {
+    private val client = SupabaseClient.client
+
+    /** Get all members of a group */
+    suspend fun getGroupMembers(groupId: String): Result<List<GroupMember>> =
+            withContext(Dispatchers.IO) {
+                try {
+                    val members =
+                            client.from("group_members")
+                                    .select {
+                                        filter { eq("group_id", groupId) }
+                                        order("joined_at", ascending = true)
+                                    }
+                                    .decodeList<GroupMember>()
+
+                    Result.success(members)
+                } catch (e: Exception) {
+                    Result.failure(e)
+                }
+            }
+
+    /** Add a member to a group This is typically called after invite validation */
+    suspend fun addMember(
+            groupId: String,
+            userId: String,
+            role: GroupRole = GroupRole.MEMBER
+    ): Result<GroupMember> =
+            withContext(Dispatchers.IO) {
+                try {
+                    val newMember =
+                            mapOf("group_id" to groupId, "user_id" to userId, "role" to role.value)
+
+                    val result =
+                            client.from("group_members")
+                                    .insert(newMember) { select() }
+                                    .decodeSingle<GroupMember>()
+
+                    Result.success(result)
+                } catch (e: Exception) {
+                    Result.failure(e)
+                }
+            }
+
+    /**
+     * Remove a member from a group Can be called by owner/moderator to remove others, or by member
+     * to leave
+     */
+    suspend fun removeMember(groupId: String, userId: String): Result<Unit> =
+            withContext(Dispatchers.IO) {
+                try {
+                    client.from("group_members").delete {
+                        filter {
+                            eq("group_id", groupId)
+                            eq("user_id", userId)
+                        }
+                    }
+
+                    Result.success(Unit)
+                } catch (e: Exception) {
+                    Result.failure(e)
+                }
+            }
+
+    /** Update a member's role Only owner/moderator can do this */
+    suspend fun updateMemberRole(
+            groupId: String,
+            userId: String,
+            newRole: GroupRole
+    ): Result<GroupMember> =
+            withContext(Dispatchers.IO) {
+                try {
+                    val result =
+                            client.from("group_members")
+                                    .update(mapOf("role" to newRole.value)) {
+                                        filter {
+                                            eq("group_id", groupId)
+                                            eq("user_id", userId)
+                                        }
+                                        select()
+                                    }
+                                    .decodeSingle<GroupMember>()
+
+                    Result.success(result)
+                } catch (e: Exception) {
+                    Result.failure(e)
+                }
+            }
+
+    /** Leave a group (remove self) */
+    suspend fun leaveGroup(groupId: String): Result<Unit> =
+            withContext(Dispatchers.IO) {
+                try {
+                    val userId =
+                            client.auth.currentUserOrNull()?.id
+                                    ?: return@withContext Result.failure(
+                                            Exception("User not authenticated")
+                                    )
+
+                    removeMember(groupId, userId)
+                } catch (e: Exception) {
+                    Result.failure(e)
+                }
+            }
+
+    /** Check if current user is a member of the group */
+    suspend fun isMember(groupId: String): Result<Boolean> =
+            withContext(Dispatchers.IO) {
+                try {
+                    val userId =
+                            client.auth.currentUserOrNull()?.id
+                                    ?: return@withContext Result.success(false)
+
+                    val members =
+                            client.from("group_members")
+                                    .select {
+                                        filter {
+                                            eq("group_id", groupId)
+                                            eq("user_id", userId)
+                                        }
+                                    }
+                                    .decodeList<GroupMember>()
+
+                    Result.success(members.isNotEmpty())
+                } catch (e: Exception) {
+                    Result.failure(e)
+                }
+            }
+
+    /** Get current user's role in the group */
+    suspend fun getUserRole(groupId: String): Result<GroupRole?> =
+            withContext(Dispatchers.IO) {
+                try {
+                    val userId =
+                            client.auth.currentUserOrNull()?.id
+                                    ?: return@withContext Result.success(null)
+
+                    val member =
+                            client.from("group_members")
+                                    .select {
+                                        filter {
+                                            eq("group_id", groupId)
+                                            eq("user_id", userId)
+                                        }
+                                    }
+                                    .decodeList<GroupMember>()
+                                    .firstOrNull()
+
+                    val role = member?.let { GroupRole.fromString(it.role) }
+                    Result.success(role)
+                } catch (e: Exception) {
+                    Result.failure(e)
+                }
+            }
+
+    /** Get member count for a group */
+    suspend fun getMemberCount(groupId: String): Result<Int> =
+            withContext(Dispatchers.IO) {
+                try {
+                    val members = getGroupMembers(groupId).getOrThrow()
+                    Result.success(members.size)
+                } catch (e: Exception) {
+                    Result.failure(e)
+                }
+            }
+}
