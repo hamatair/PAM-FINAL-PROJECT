@@ -1,4 +1,4 @@
-package com.example.pam_1.ui.screens
+package com.example.pam_1.ui.screens.features.auth
 
 import android.widget.Toast
 import androidx.compose.foundation.clickable
@@ -93,10 +93,30 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel) {
 
         // --- TAMBAHAN: Clickable Forgot Password ---
         Spacer(Modifier.height(8.dp))
-        Box(
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            contentAlignment = Alignment.CenterEnd // Rata Kanan
+            horizontalArrangement = Arrangement.SpaceBetween, // Menyebar komponen di kiri dan kanan
+            verticalAlignment = Alignment.CenterVertically // Pastikan vertikal sejajar
         ) {
+            // 1. Checkbox "Remember Me"
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                // Tambahkan modifier clickable di sini agar seluruh area Row bisa diklik untuk toggle
+                modifier = Modifier.clickable { rememberMe = !rememberMe }
+            ) {
+                Checkbox(
+                    checked = rememberMe,
+                    onCheckedChange = { rememberMe = it },
+                    // Hapus onCheckedChange jika menggunakan modifier clickable di Row terluar
+                    // onCheckedChange = null // Biarkan null atau {} jika toggle dilakukan di Row
+                )
+                Text(
+                    text = "Ingat Saya",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+
+            // 2. Tautan "Lupa Password?"
             Text(
                 text = "Lupa Password?",
                 style = MaterialTheme.typography.bodyMedium,

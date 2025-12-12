@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.pam_1.data.model.User
 import com.example.pam_1.data.repository.AuthRepository
 import com.example.pam_1.data.repository.UserRepository
+import com.example.pam_1.navigations.NavigationItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -52,6 +53,12 @@ class AuthViewModel(
     var isResetPasswordFlow by mutableStateOf(false)
         private set
 
+    private val _lastActiveTab = MutableStateFlow(NavigationItem.Tugas.route)
+    val lastActiveTab: StateFlow<String> = _lastActiveTab
+
+    fun setLastActiveTab(route: String) {
+        _lastActiveTab.value = route
+    }
 
     // --- AUTH FUNCTIONS ---
 
@@ -254,9 +261,5 @@ class AuthViewModel(
                 isUpdatingProfile = false
             }
         }
-    }
-
-    fun refreshProfile() {
-        fetchUserProfile()
     }
 }

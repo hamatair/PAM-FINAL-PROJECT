@@ -8,13 +8,12 @@ import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.util.Locale.filter
 
 class UserRepository {
 
     private val supabase = SupabaseClient.client
     private val userTable = "users"
-    private val bucket = "profile"
+    private val profile_bucket = "profile"
 
     /**
      * Fetch user profile dari database public.users
@@ -124,7 +123,7 @@ class UserRepository {
             try {
                 println("📤 Uploading profile photo: $fileName")
 
-                val storageClient = supabase.storage[bucket]
+                val storageClient = supabase.storage[profile_bucket]
 
                 storageClient.upload(
                     path = fileName,

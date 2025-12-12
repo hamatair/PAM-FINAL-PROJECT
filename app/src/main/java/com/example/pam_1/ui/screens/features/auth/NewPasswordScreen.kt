@@ -1,4 +1,4 @@
-package com.example.pam_1.ui.screens
+package com.example.pam_1.ui.screens.features.auth
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.*

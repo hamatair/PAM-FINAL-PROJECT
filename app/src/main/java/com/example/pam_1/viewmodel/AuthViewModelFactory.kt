@@ -5,10 +5,10 @@ import androidx.lifecycle.ViewModelProvider
 import com.example.pam_1.data.repository.AuthRepository
 import com.example.pam_1.data.repository.UserRepository
 
-// === FACTORY UNTUK MEMBUAT VIEWMODEL DENGAN DEPENDENSI ===
+
 class AuthViewModelFactory(
     private val authRepository: AuthRepository,
-    private val userRepository: UserRepository // Tambahkan dependensi UserRepository
+    private val userRepository: UserRepository
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(AuthViewModel::class.java)) {

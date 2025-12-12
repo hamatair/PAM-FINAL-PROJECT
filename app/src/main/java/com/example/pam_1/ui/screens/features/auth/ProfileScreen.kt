@@ -1,5 +1,6 @@
-package com.example.pam_1.ui.screens
+package com.example.pam_1.ui.screens.features.auth
 
+import android.R
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -13,7 +14,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
@@ -21,7 +21,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
@@ -30,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.example.pam_1.ui.theme.PrimaryBrown
 import com.example.pam_1.viewmodel.AuthViewModel
 import com.example.pam_1.viewmodel.ProfileUIState
 import com.example.pam_1.utils.FileUtils
@@ -151,7 +151,7 @@ fun ProfileScreen(navController: NavController, viewModel: AuthViewModel) {
 
                             // ==== BACK BUTTON (LEFT) ====
                             IconButton(onClick = { isEditing = false }) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = PrimaryBrown)
                             }
 
                             // ==== CANCEL & CONFIRM (RIGHT) ====
@@ -244,8 +244,8 @@ fun ProfileScreen(navController: NavController, viewModel: AuthViewModel) {
                                     model = ImageRequest.Builder(context)
                                         .data(finalImageUrl)
                                         .crossfade(true)
-                                        .placeholder(android.R.drawable.ic_menu_gallery)
-                                        .error(android.R.drawable.ic_menu_report_image)
+                                        .placeholder(R.drawable.ic_menu_gallery)
+                                        .error(R.drawable.ic_menu_report_image)
                                         .build(),
                                     contentDescription = "Foto Profil",
                                     contentScale = ContentScale.Crop,
@@ -307,8 +307,8 @@ fun ProfileScreen(navController: NavController, viewModel: AuthViewModel) {
                                         model = ImageRequest.Builder(context)
                                             .data(finalImageUrl)
                                             .crossfade(true)
-                                            .placeholder(android.R.drawable.ic_menu_gallery)
-                                            .error(android.R.drawable.ic_menu_report_image)
+                                            .placeholder(R.drawable.ic_menu_gallery)
+                                            .error(R.drawable.ic_menu_report_image)
                                             .build(),
                                         contentDescription = "Foto Profil",
                                         contentScale = ContentScale.Crop,

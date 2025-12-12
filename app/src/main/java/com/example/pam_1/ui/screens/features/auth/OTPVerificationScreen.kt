@@ -1,4 +1,4 @@
-package com.example.pam_1.ui.screens
+package com.example.pam_1.ui.screens.features.auth
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
@@ -9,7 +9,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.pam_1.viewmodel.AuthUIState

@@ -4,61 +4,43 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.pam_1.data.SupabaseClient
+import com.example.pam_1.data.repository.EventRepository
 import com.example.pam_1.navigations.NavigationItem
 import com.example.pam_1.ui.common.AnimatedBottomNavigationBar
+import com.example.pam_1.ui.screens.features.events.EventListScreen
 import com.example.pam_1.viewmodel.AuthViewModel
-import com.example.pam_1.ui.theme.PrimaryBrown
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun AppToolbar(navController: NavController) {
-    TopAppBar(
-        title = {
-            Text(
-                text = "PAM App",
-                style = MaterialTheme.typography.titleLarge,
-                color = PrimaryBrown
-            )
-        },
-        actions = {
-            IconButton(onClick = { navController.navigate("profile") }) {
-                Icon(Icons.Filled.Person, contentDescription = "profile", tint = PrimaryBrown)
-            }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.background
-        )
-    )
-}
+import com.example.pam_1.viewmodel.EventViewModel
+import com.example.pam_1.viewmodel.EventViewModelFactory
 
 @Composable
 fun MainAppScreen(
     navController: NavController,
-    viewModel: AuthViewModel
+    viewModel: AuthViewModel,
 ) {
-    // state lokal untuk tab saat ini (string route seperti "tugas")
-    var currentTab by remember { mutableStateOf(NavigationItem.Tugas.route) }
+    // --- State Management untuk Tab Aktif ---
+    val initialTab = viewModel.lastActiveTab.collectAsState().value
+    var currentTab by remember { mutableStateOf(initialTab) }
 
-    // Jika kamu ingin default tab berubah berdasarkan route root (mis. saat navigate ke home),
-    // kamu bisa membaca navBackStackEntry di sini dan set currentTab sekali.
-    // Tapi sederhana: default = tugas (seperti sebelumnya).
+    LaunchedEffect(currentTab) {
+        viewModel.setLastActiveTab(currentTab)
+    }
+
+    // Inisialisasi ViewModel untuk Event di dalam MainApp
+    val eventRepository = remember { EventRepository(SupabaseClient.client) }
+    val eventViewModel: EventViewModel = viewModel(
+        factory = EventViewModelFactory(eventRepository)
+    )
 
     Scaffold(
-        topBar = { AppToolbar(navController) },
         bottomBar = {
             AnimatedBottomNavigationBar(
                 currentTab = currentTab,
@@ -80,23 +62,37 @@ fun MainAppScreen(
                 NavigationItem.Keuangan.route -> DummyScreen("Halaman Keuangan")
                 NavigationItem.Grup.route -> DummyScreen("Halaman Grup")
                 NavigationItem.Catatan.route -> DummyScreen("Halaman Catatan")
-                NavigationItem.Event.route -> DummyScreen("Halaman Event")
+
+                // --- TAB EVENT ---
+                NavigationItem.Event.route -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopStart) {
+                        EventListScreen(
+                            viewModel = eventViewModel,
+                            navController = navController,
+                            // Navigasi ke Add Event (Screen penuh)
+                            onNavigateToAddEvent = {
+                                navController.navigate("add_event")
+                            },
+                            // Navigasi ke Detail Event
+                            onNavigateToDetail = { eventId ->
+                                navController.navigate("event_detail/$eventId")
+                            },
+                        )
+                    }
+                }
                 else -> DummyScreen("Halaman Tugas")
             }
         }
     }
 }
 
-
-
-
-// Komponen Sementara untuk test navigasi
+// Komponen Dummy (Tetap sama)
 @Composable
 fun DummyScreen(title: String) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background), // Pastikan background terang (Beige/White)
+            .background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.Center
     ) {
         Text(
