@@ -4,7 +4,9 @@ import com.example.pam_1.data.SupabaseClient
 import com.example.pam_1.data.model.GroupInvite
 import com.example.pam_1.data.model.GroupRole
 import com.example.pam_1.utils.InviteCodeGenerator
+import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.query.Order
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import kotlinx.coroutines.Dispatchers
@@ -161,7 +163,7 @@ class GroupInviteRepository {
                             client.from("group_invites")
                                     .select {
                                         filter { eq("group_id", groupId) }
-                                        order("created_at", ascending = false)
+                                        order("created_at", order = Order.DESCENDING)
                                     }
                                     .decodeList<GroupInvite>()
 

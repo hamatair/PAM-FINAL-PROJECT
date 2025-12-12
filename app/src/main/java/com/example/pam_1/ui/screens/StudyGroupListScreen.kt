@@ -22,7 +22,6 @@ import com.example.pam_1.data.model.StudyGroup
 import com.example.pam_1.viewmodel.StudyGroupUIState
 import com.example.pam_1.viewmodel.StudyGroupViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StudyGroupListScreen(navController: NavController, viewModel: StudyGroupViewModel) {
     var selectedTab by remember { mutableStateOf(0) }
@@ -50,26 +49,8 @@ fun StudyGroupListScreen(navController: NavController, viewModel: StudyGroupView
         }
     }
 
-    Scaffold(
-            topBar = {
-                TopAppBar(
-                        title = { Text("Study Groups") },
-                        colors =
-                                TopAppBarDefaults.topAppBarColors(
-                                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                        titleContentColor =
-                                                MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                )
-            },
-            floatingActionButton = {
-                FloatingActionButton(
-                        onClick = { navController.navigate("create_group") },
-                        containerColor = MaterialTheme.colorScheme.primary
-                ) { Icon(Icons.Default.Add, "Create Group") }
-            }
-    ) { paddingValues ->
-        Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize()) {
             // Tab Row
             TabRow(selectedTabIndex = selectedTab) {
                 Tab(
@@ -87,40 +68,48 @@ fun StudyGroupListScreen(navController: NavController, viewModel: StudyGroupView
             Spacer(Modifier.height(8.dp))
 
             // Content based on selected tab
-            when (selectedTab) {
-                0 ->
-                        GroupList(
-                                groups = viewModel.myGroups,
-                                isLoading = uiState is StudyGroupUIState.Loading,
-                                onGroupClick = { group ->
-                                    navController.navigate("group_detail/${group.id}")
-                                },
-                                emptyMessage = "You haven't joined any groups yet"
-                        )
-                1 ->
-                        GroupList(
-                                groups = viewModel.publicGroups,
-                                isLoading = uiState is StudyGroupUIState.Loading,
-                                onGroupClick = { group ->
-                                    navController.navigate("group_detail/${group.id}")
-                                },
-                                emptyMessage = "No public groups available"
-                        )
+            Box(modifier = Modifier.weight(1f)) {
+                when (selectedTab) {
+                    0 ->
+                            GroupList(
+                                    groups = viewModel.myGroups,
+                                    isLoading = uiState is StudyGroupUIState.Loading,
+                                    onGroupClick = { group ->
+                                        navController.navigate("group_detail/${group.id}")
+                                    },
+                                    emptyMessage = "You haven't joined any groups yet"
+                            )
+                    1 ->
+                            GroupList(
+                                    groups = viewModel.publicGroups,
+                                    isLoading = uiState is StudyGroupUIState.Loading,
+                                    onGroupClick = { group ->
+                                        navController.navigate("group_detail/${group.id}")
+                                    },
+                                    emptyMessage = "No public groups available"
+                            )
+                }
             }
 
-            Spacer(Modifier.height(16.dp))
+            // Bottom buttons
+            Column(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                        onClick = { navController.navigate("create_group") },
+                        modifier = Modifier.fillMaxWidth().height(50.dp)
+                ) {
+                    Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Create New Group")
+                }
 
-            // Join by Code Button
-            Button(
-                    onClick = { navController.navigate("join_group") },
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).height(50.dp),
-                    colors =
-                            ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.secondary
-                            )
-            ) { Text("Join Group with Code") }
-
-            Spacer(Modifier.height(16.dp))
+                OutlinedButton(
+                        onClick = { navController.navigate("join_group") },
+                        modifier = Modifier.fillMaxWidth().height(50.dp)
+                ) { Text("Join Group with Code") }
+            }
         }
     }
 }

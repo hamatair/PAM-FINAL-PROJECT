@@ -17,6 +17,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
 import com.example.pam_1.navigations.NavigationItem
 import com.example.pam_1.ui.common.AnimatedBottomNavigationBar
@@ -75,8 +76,30 @@ fun MainAppScreen(navController: NavController, viewModel: AuthViewModel) {
                 NavigationItem.Tugas.route -> DummyScreen("Halaman Tugas")
                 NavigationItem.Keuangan.route -> DummyScreen("Halaman Keuangan")
                 NavigationItem.Grup.route -> {
-                    // Navigate to Study Groups instead of showing dummy screen
-                    LaunchedEffect(Unit) { navController.navigate("study_groups") }
+                    // Show Study Groups directly without navigation
+                    // Get StudyGroupViewModel from parent composable
+                    val context = LocalContext.current
+                    val groupRepository = remember {
+                        com.example.pam_1.data.repository.StudyGroupRepository()
+                    }
+                    val memberRepository = remember {
+                        com.example.pam_1.data.repository.GroupMemberRepository()
+                    }
+                    val inviteRepository = remember {
+                        com.example.pam_1.data.repository.GroupInviteRepository()
+                    }
+
+                    val studyGroupViewModel: com.example.pam_1.viewmodel.StudyGroupViewModel =
+                            androidx.lifecycle.viewmodel.compose.viewModel(
+                                    factory =
+                                            com.example.pam_1.viewmodel.StudyGroupViewModelFactory(
+                                                    groupRepository = groupRepository,
+                                                    memberRepository = memberRepository,
+                                                    inviteRepository = inviteRepository
+                                            )
+                            )
+
+                    StudyGroupListScreen(navController, studyGroupViewModel)
                 }
                 NavigationItem.Catatan.route -> DummyScreen("Halaman Catatan")
                 NavigationItem.Event.route -> DummyScreen("Halaman Event")

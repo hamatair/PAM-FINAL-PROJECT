@@ -3,7 +3,9 @@ package com.example.pam_1.data.repository
 import android.net.Uri
 import com.example.pam_1.data.SupabaseClient
 import com.example.pam_1.data.model.StudyGroup
+import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.query.Order
 import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -134,7 +136,7 @@ class StudyGroupRepository {
                             client.from("study_groups")
                                     .select {
                                         filter { eq("is_public", true) }
-                                        order("created_at", ascending = false)
+                                        order("created_at", Order.DESCENDING)
                                     }
                                     .decodeList<StudyGroup>()
 
@@ -190,7 +192,7 @@ class StudyGroupRepository {
                             client.from("study_groups")
                                     .select {
                                         filter { ilike("name", "%$query%") }
-                                        order("created_at", ascending = false)
+                                        order("created_at", Order.DESCENDING)
                                     }
                                     .decodeList<StudyGroup>()
 

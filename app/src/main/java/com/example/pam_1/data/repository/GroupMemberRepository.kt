@@ -3,7 +3,9 @@ package com.example.pam_1.data.repository
 import com.example.pam_1.data.SupabaseClient
 import com.example.pam_1.data.model.GroupMember
 import com.example.pam_1.data.model.GroupRole
+import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.query.Order
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -18,7 +20,7 @@ class GroupMemberRepository {
                             client.from("group_members")
                                     .select {
                                         filter { eq("group_id", groupId) }
-                                        order("joined_at", ascending = true)
+                                        order("joined_at", Order.ASCENDING )
                                     }
                                     .decodeList<GroupMember>()
 
