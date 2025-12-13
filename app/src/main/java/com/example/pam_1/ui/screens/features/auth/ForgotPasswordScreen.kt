@@ -13,6 +13,9 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.pam_1.viewmodel.AuthUIState
 import com.example.pam_1.viewmodel.AuthViewModel
+// PENTING: Import Extension Functions
+import com.example.pam_1.navigations.navigateSafe
+import com.example.pam_1.navigations.popBackStackSafe
 
 
 @Composable
@@ -26,7 +29,8 @@ fun ForgotPasswordScreen(navController: NavController, viewModel: AuthViewModel)
             is AuthUIState.AwaitingOTP -> {
                 Toast.makeText(context, "Kode OTP telah dikirim ke email Anda", Toast.LENGTH_LONG).show()
                 // Navigasi ke layar verifikasi OTP
-                navController.navigate("otp_verification")
+                // --- PERBAIKAN 1: Gunakan navigateSafe ---
+                navController.navigateSafe("otp_verification")
             }
             is AuthUIState.Error -> {
                 Toast.makeText(context, uiState.message, Toast.LENGTH_SHORT).show()
@@ -74,7 +78,7 @@ fun ForgotPasswordScreen(navController: NavController, viewModel: AuthViewModel)
             Button(
                 onClick = {
                     if (email.isNotBlank()) {
-                        // MENGGANTI: Memanggil fungsi untuk mengirim OTP
+                        // Memanggil fungsi untuk mengirim OTP
                         viewModel.sendResetPasswordOTP(email)
                     } else {
                         Toast.makeText(context, "Email tidak boleh kosong", Toast.LENGTH_SHORT).show()
@@ -91,8 +95,9 @@ fun ForgotPasswordScreen(navController: NavController, viewModel: AuthViewModel)
         Spacer(Modifier.height(16.dp))
 
         TextButton(
+            // --- PERBAIKAN 2: Gunakan popBackStackSafe ---
             onClick = {
-                navController.popBackStack()
+                navController.popBackStackSafe()
                 viewModel.resetState()
             },
             modifier = Modifier.align(Alignment.CenterHorizontally)

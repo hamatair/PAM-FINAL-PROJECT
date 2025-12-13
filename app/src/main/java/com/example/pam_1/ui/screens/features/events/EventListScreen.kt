@@ -25,6 +25,8 @@ import com.example.pam_1.ui.common.EventCard
 import com.example.pam_1.ui.theme.*
 import com.example.pam_1.viewmodel.EventViewModel
 import com.example.pam_1.viewmodel.UiState
+// PENTING: Import Extension Functions
+import com.example.pam_1.navigations.navigateSafe
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -100,7 +102,8 @@ fun EventListScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        IconButton(onClick = { navController.navigate("my_events") }) {
+                        // --- PERBAIKAN 1: Gunakan navigateSafe ---
+                        IconButton(onClick = { navController.navigateSafe("my_events") }) {
                             Icon(Icons.Filled.Event, "My Events", tint = PrimaryBrown)
                         }
                         Text(
@@ -110,7 +113,8 @@ fun EventListScreen(
                             textAlign = TextAlign.Center,
                             modifier = Modifier.weight(1f)
                         )
-                        IconButton(onClick = { navController.navigate("profile") }) {
+                        // --- PERBAIKAN 2: Gunakan navigateSafe ---
+                        IconButton(onClick = { navController.navigateSafe("profile") }) {
                             Icon(Icons.Filled.Person, "Profile", tint = PrimaryBrown)
                         }
                     }

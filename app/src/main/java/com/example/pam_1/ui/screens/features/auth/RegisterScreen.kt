@@ -20,6 +20,10 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.pam_1.viewmodel.AuthUIState
 import com.example.pam_1.viewmodel.AuthViewModel
+// PENTING: Import Extension Functions yang sudah dibuat di AppNavigation.kt
+// Jika merah, arahkan kursor lalu tekan Alt+Enter untuk Import
+import com.example.pam_1.navigations.navigateSafe
+import com.example.pam_1.navigations.popBackStackSafe
 
 // Fungsi Validasi Password
 fun isValidPassword(password: String): Boolean {
@@ -59,7 +63,9 @@ fun RegisterScreen(navController: NavController, viewModel: AuthViewModel) {
             is AuthUIState.AwaitingOTP -> {
                 // Navigasi ke layar verifikasi OTP
                 Toast.makeText(context, "Kode OTP telah dikirim ke email Anda", Toast.LENGTH_LONG).show()
-                navController.navigate("otp_verification")
+
+                // --- PERBAIKAN 1: Gunakan navigateSafe ---
+                navController.navigateSafe("otp_verification")
             }
 
             is AuthUIState.Error -> {
@@ -282,7 +288,8 @@ fun RegisterScreen(navController: NavController, viewModel: AuthViewModel) {
             )
 
             TextButton(
-                onClick = { navController.popBackStack() },
+                // --- PERBAIKAN 2: Gunakan popBackStackSafe ---
+                onClick = { navController.popBackStackSafe() },
                 contentPadding = PaddingValues(0.dp),
                 modifier = Modifier.alignByBaseline()
             ) {

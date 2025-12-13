@@ -31,8 +31,10 @@ import com.example.pam_1.ui.theme.PrimaryBrown
 import com.example.pam_1.viewmodel.AuthViewModel
 import com.example.pam_1.viewmodel.ProfileUIState
 import com.example.pam_1.utils.FileUtils
-// Pastikan R diimport sesuai package aplikasi Anda
-// import com.example.pam_1.R
+// PENTING: Import Extension Functions
+import com.example.pam_1.navigations.navigateSafe
+import com.example.pam_1.navigations.popBackStackSafe
+
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -64,8 +66,6 @@ fun ProfileScreen(navController: NavController, viewModel: AuthViewModel) {
 
     // State Foto
     var photoUrl by remember { mutableStateOf<String?>(null) }
-    // Kita tetap butuh photoBytes untuk menampung data yang akan diupload,
-    // tapi tidak akan digunakan untuk preview di AsyncImage.
     var photoBytes by remember { mutableStateOf<ByteArray?>(null) }
 
     var displayName by remember { mutableStateOf("") }
@@ -76,7 +76,6 @@ fun ProfileScreen(navController: NavController, viewModel: AuthViewModel) {
     ) { uri ->
         if (uri != null) {
             scope.launch {
-                // Data foto diambil, tapi UI gambar tidak akan berubah sampai di-save
                 val bytes = withContext(Dispatchers.IO) {
                     context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
                 }
@@ -99,12 +98,10 @@ fun ProfileScreen(navController: NavController, viewModel: AuthViewModel) {
 
                 username = user.username
                 email = user.email
-                // Handle null phone number
                 phoneNumber = user.phone_number ?: ""
                 bio = user.bio ?: ""
                 photoUrl = user.photo_profile
                 displayName = user.full_name.ifEmpty { "-" }
-                // Reset photoBytes saat keluar mode edit atau saat data baru berhasil dimuat
                 photoBytes = null
 
                 firstNameError = false
@@ -147,12 +144,8 @@ fun ProfileScreen(navController: NavController, viewModel: AuthViewModel) {
                 ) {
                     Spacer(Modifier.height(64.dp))
 
-                    // ============================
-                    // LOGIKA GAMBAR (URL ONLINE SAJA)
-                    // ============================
-                    // Kita gunakan 'remember(photoUrl)' saja. photoBytes diabaikan untuk tampilan.
+                    // Logika URL Gambar dengan Timestamp
                     val finalImageUrl = remember(photoUrl) {
-                        // Tambahkan timestamp agar Coil me-refresh gambar jika URL sama tapi isinya berubah di server
                         "${photoUrl ?: ""}?t=${System.currentTimeMillis()}"
                     }
 
@@ -170,7 +163,7 @@ fun ProfileScreen(navController: NavController, viewModel: AuthViewModel) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 IconButton(onClick = {
                                     isEditing = false
-                                    // Reset data ke state awal
+                                    // Reset data
                                     if (profileState is ProfileUIState.Success) {
                                         val user = (profileState as ProfileUIState.Success).user
                                         phoneNumber = user.phone_number ?: ""
@@ -197,13 +190,11 @@ fun ProfileScreen(navController: NavController, viewModel: AuthViewModel) {
 
                                         if (isValid) {
                                             val fullName = "$firstName $lastName".trim()
-                                            // ViewModel akan menangani pengubahan string kosong "" menjadi null untuk nomor HP
                                             viewModel.saveProfileChanges(
                                                 username, fullName, phoneNumber, bio, photoBytes,
                                                 onSuccess = {
                                                     Toast.makeText(context, "Profil diperbarui", Toast.LENGTH_SHORT).show()
                                                     isEditing = false
-                                                    // Fetch ulang agar gambar online terbaru muncul
                                                     viewModel.fetchUserProfile()
                                                 },
                                                 onError = { msg -> Toast.makeText(context, msg, Toast.LENGTH_SHORT).show() }
@@ -233,11 +224,8 @@ fun ProfileScreen(navController: NavController, viewModel: AuthViewModel) {
                             Box(contentAlignment = Alignment.BottomEnd) {
                                 AsyncImage(
                                     model = ImageRequest.Builder(context)
-                                        .data(finalImageUrl) // HANYA MENGGUNAKAN URL ONLINE
+                                        .data(finalImageUrl)
                                         .crossfade(true)
-                                        // Ganti R.drawable... dengan resource Anda jika error
-                                        // .placeholder(R.drawable.ic_menu_gallery)
-                                        // .error(R.drawable.ic_menu_report_image)
                                         .build(),
                                     contentDescription = "Foto Profil",
                                     contentScale = ContentScale.Crop,
@@ -245,13 +233,11 @@ fun ProfileScreen(navController: NavController, viewModel: AuthViewModel) {
                                         .size(120.dp)
                                         .clip(CircleShape)
                                         .clickable {
-                                            // Picker tetap berjalan untuk mengisi photoBytes
                                             pickPhotoLauncher.launch(
                                                 PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                                             )
                                         }
                                 )
-                                // Overlay Ikon Kamera
                                 Surface(
                                     shape = CircleShape,
                                     color = MaterialTheme.colorScheme.primary,
@@ -272,7 +258,8 @@ fun ProfileScreen(navController: NavController, viewModel: AuthViewModel) {
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             IconButton(
-                                onClick = { navController.popBackStack() },
+                                // --- PERBAIKAN 1: Gunakan popBackStackSafe ---
+                                onClick = { navController.popBackStackSafe() },
                                 modifier = Modifier.align(Alignment.Top)
                             ) {
                                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -286,11 +273,8 @@ fun ProfileScreen(navController: NavController, viewModel: AuthViewModel) {
                                 Box(contentAlignment = Alignment.BottomEnd) {
                                     AsyncImage(
                                         model = ImageRequest.Builder(context)
-                                            .data(finalImageUrl) // HANYA MENGGUNAKAN URL ONLINE
+                                            .data(finalImageUrl)
                                             .crossfade(true)
-                                            // Ganti R.drawable... dengan resource Anda jika error
-                                            // .placeholder(R.drawable.ic_menu_gallery)
-                                            // .error(R.drawable.ic_menu_report_image)
                                             .build(),
                                         contentDescription = "Foto Profil",
                                         contentScale = ContentScale.Crop,
@@ -307,7 +291,6 @@ fun ProfileScreen(navController: NavController, viewModel: AuthViewModel) {
 
                     Spacer(Modifier.height(16.dp))
 
-                    // --- SISA UI (FORM FIELD DLL) SAMA SEPERTI SEBELUMNYA ---
                     if (!isEditing) {
                         Text(
                             text = displayName,
@@ -389,7 +372,10 @@ fun ProfileScreen(navController: NavController, viewModel: AuthViewModel) {
                         Button(
                             onClick = {
                                 viewModel.logout {
-                                    navController.navigate("login") { popUpTo(0) { inclusive = true } }
+                                    // --- PERBAIKAN 2: Gunakan navigateSafe saat logout ---
+                                    navController.navigateSafe("login") {
+                                        popUpTo(0) { inclusive = true }
+                                    }
                                 }
                             },
                             modifier = Modifier.fillMaxWidth().height(56.dp),

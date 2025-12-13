@@ -15,6 +15,8 @@ import androidx.navigation.NavController
 import com.example.pam_1.data.SupabaseClient
 import com.example.pam_1.data.repository.EventRepository
 import com.example.pam_1.navigations.NavigationItem
+// PENTING: Import extension function navigateSafe yang sudah dibuat
+import com.example.pam_1.navigations.navigateSafe
 import com.example.pam_1.ui.common.AnimatedBottomNavigationBar
 import com.example.pam_1.ui.screens.features.events.EventListScreen
 import com.example.pam_1.viewmodel.AuthViewModel
@@ -69,13 +71,15 @@ fun MainAppScreen(
                         EventListScreen(
                             viewModel = eventViewModel,
                             navController = navController,
-                            // Navigasi ke Add Event (Screen penuh)
+
+                            // UBAH DISINI: Gunakan navigateSafe untuk mencegah double click
                             onNavigateToAddEvent = {
-                                navController.navigate("add_event")
+                                navController.navigateSafe("add_event")
                             },
-                            // Navigasi ke Detail Event
+
+                            // UBAH DISINI: Gunakan navigateSafe
                             onNavigateToDetail = { eventId ->
-                                navController.navigate("event_detail/$eventId")
+                                navController.navigateSafe("event_detail/$eventId")
                             },
                         )
                     }

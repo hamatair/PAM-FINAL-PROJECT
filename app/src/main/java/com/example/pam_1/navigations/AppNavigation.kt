@@ -3,7 +3,10 @@ package com.example.pam_1.navigations
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
+import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -39,7 +42,7 @@ fun AppNavigation() {
         )
     )
 
-    // Factory Event (PENTING: Di-share ke screen yang butuh EventViewModel)
+    // Factory Event (Di-share ke screen yang butuh EventViewModel)
     val eventRepository = remember { EventRepository(SupabaseClient.client) }
     val eventViewModelFactory = remember { EventViewModelFactory(eventRepository) }
 
@@ -48,6 +51,7 @@ fun AppNavigation() {
         startDestination = "splash"
     ) {
         // --- AUTH SECTION ---
+        // (Section ini jarang menyebabkan crash double tap, tapi aman menggunakan navigate biasa)
         composable("splash") { SplashScreen(navController, authRepository) }
         composable("login") { LoginScreen(navController, authViewModel) }
         composable("register") { RegisterScreen(navController, authViewModel) }
@@ -60,6 +64,8 @@ fun AppNavigation() {
 
         // 1. HOME (MainAppScreen dengan Bottom Nav)
         composable("home") {
+            // MainAppScreen menerima navController, pastikan di dalam MainAppScreen
+            // Anda juga menggunakan .navigateSafe() jika memanggil navigasi
             MainAppScreen(
                 navController = navController,
                 viewModel = authViewModel
@@ -68,11 +74,11 @@ fun AppNavigation() {
 
         // 2. ADD EVENT
         composable("add_event") {
-            // Kita inject ViewModel baru menggunakan Factory yang sama
             val eventViewModel: EventViewModel = viewModel(factory = eventViewModelFactory)
             AddEventScreen(
                 viewModel = eventViewModel,
-                onNavigateBack = { navController.popBackStack() }
+                // FIX: Gunakan popBackStackSafe
+                onNavigateBack = { navController.popBackStackSafe() }
             )
         }
 
@@ -84,29 +90,28 @@ fun AppNavigation() {
             MyEventsScreen(
                 viewModel = eventViewModel,
                 currentUserId = currentUserId,
+                // FIX: Gunakan navigateSafe
                 onNavigateToDetail = { eventId ->
-                    navController.navigate("event_detail/$eventId")
+                    navController.navigateSafe("event_detail/$eventId")
                 },
-                onNavigateBack = { navController.popBackStack() }
+                // FIX: Gunakan popBackStackSafe
+                onNavigateBack = { navController.popBackStackSafe() }
             )
         }
 
-        // 4. EVENT DETAIL (SUDAH DIPERBAIKI)
+        // 4. EVENT DETAIL
         composable(
             route = "event_detail/{eventId}",
             arguments = listOf(navArgument("eventId") { type = NavType.StringType })
         ) { backStackEntry ->
-            // Ambil ID dari argument navigasi
             val eventId = backStackEntry.arguments?.getString("eventId") ?: ""
-
-            // Buat ViewModel instance
             val eventViewModel: EventViewModel = viewModel(factory = eventViewModelFactory)
 
-            // Panggil Screen Detail
             DetailEventScreen(
                 eventId = eventId,
                 viewModel = eventViewModel,
-                onNavigateBack = { navController.popBackStack() }
+                // FIX: Gunakan popBackStackSafe
+                onNavigateBack = { navController.popBackStackSafe() }
             )
         }
     }
