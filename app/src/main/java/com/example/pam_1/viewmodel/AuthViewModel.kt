@@ -75,7 +75,7 @@ class AuthViewModel(
     }
 
     // Register dengan OTP
-    fun register(email: String, pass: String, username: String, full_name: String, phone_number: String) {
+    fun register(email: String, pass: String, username: String, full_name: String, phone_number: Nothing?) {
         viewModelScope.launch {
             authState = AuthUIState.Loading
             try {
@@ -228,6 +228,7 @@ class AuthViewModel(
             try {
                 val currentUser = currentState.user
                 var finalPhotoUrl = currentUser.photo_profile
+                val finalPhone = if (phone.isBlank()) null else phone
 
                 // 1. Upload foto baru jika ada
                 if (photoBytes != null) {
@@ -242,7 +243,7 @@ class AuthViewModel(
                 val updatedUser = currentUser.copy(
                     username = username.trim(),
                     full_name = fullName.trim(),
-                    phone_number = phone.trim(),
+                    phone_number = finalPhone,
                     bio = bio.trim().takeIf { it.isNotEmpty() },
                     photo_profile = finalPhotoUrl
                 )

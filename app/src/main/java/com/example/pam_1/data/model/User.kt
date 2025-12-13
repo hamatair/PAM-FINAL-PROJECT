@@ -24,7 +24,7 @@ data class User(
     val full_name: String = "",
 
     @SerialName("phone_number")
-    val phone_number: String = "",
+    val phone_number: String? = null,
 
     @SerialName("photo_profile")
     val photo_profile: String? = DEFAULT_AVATAR,

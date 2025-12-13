@@ -1,13 +1,11 @@
 package com.example.pam_1.ui.screens.features.auth
 
-import android.R
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -33,6 +31,8 @@ import com.example.pam_1.ui.theme.PrimaryBrown
 import com.example.pam_1.viewmodel.AuthViewModel
 import com.example.pam_1.viewmodel.ProfileUIState
 import com.example.pam_1.utils.FileUtils
+// Pastikan R diimport sesuai package aplikasi Anda
+// import com.example.pam_1.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -64,7 +64,10 @@ fun ProfileScreen(navController: NavController, viewModel: AuthViewModel) {
 
     // State Foto
     var photoUrl by remember { mutableStateOf<String?>(null) }
+    // Kita tetap butuh photoBytes untuk menampung data yang akan diupload,
+    // tapi tidak akan digunakan untuk preview di AsyncImage.
     var photoBytes by remember { mutableStateOf<ByteArray?>(null) }
+
     var displayName by remember { mutableStateOf("") }
     var username by remember { mutableStateOf("") }
 
@@ -73,10 +76,14 @@ fun ProfileScreen(navController: NavController, viewModel: AuthViewModel) {
     ) { uri ->
         if (uri != null) {
             scope.launch {
+                // Data foto diambil, tapi UI gambar tidak akan berubah sampai di-save
                 val bytes = withContext(Dispatchers.IO) {
                     context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
                 }
-                if (bytes != null) photoBytes = bytes
+                if (bytes != null) {
+                    photoBytes = bytes
+                    Toast.makeText(context, "Foto terpilih (klik simpan untuk menerapkan)", Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
@@ -86,20 +93,20 @@ fun ProfileScreen(navController: NavController, viewModel: AuthViewModel) {
         if (profileState is ProfileUIState.Success) {
             val user = (profileState as ProfileUIState.Success).user
             if (!isEditing) {
-                // Pisah full_name dari spasi
                 val nameParts = user.full_name.trim().split(" ", limit = 2)
                 firstName = nameParts.getOrNull(0) ?: "-"
                 lastName = nameParts.getOrNull(1) ?: "-"
 
                 username = user.username
-                email = user.username // Email lengkap dari username
-                phoneNumber = user.phone_number
-                bio = user.bio ?: "-"
+                email = user.email
+                // Handle null phone number
+                phoneNumber = user.phone_number ?: ""
+                bio = user.bio ?: ""
                 photoUrl = user.photo_profile
                 displayName = user.full_name.ifEmpty { "-" }
+                // Reset photoBytes saat keluar mode edit atau saat data baru berhasil dimuat
                 photoBytes = null
 
-                // Reset error
                 firstNameError = false
                 lastNameError = false
                 phoneNumberError = false
@@ -140,82 +147,69 @@ fun ProfileScreen(navController: NavController, viewModel: AuthViewModel) {
                 ) {
                     Spacer(Modifier.height(64.dp))
 
-                    // PERBAIKAN: Pisahkan struktur untuk mode edit dan non-edit
+                    // ============================
+                    // LOGIKA GAMBAR (URL ONLINE SAJA)
+                    // ============================
+                    // Kita gunakan 'remember(photoUrl)' saja. photoBytes diabaikan untuk tampilan.
+                    val finalImageUrl = remember(photoUrl) {
+                        // Tambahkan timestamp agar Coil me-refresh gambar jika URL sama tapi isinya berubah di server
+                        "${photoUrl ?: ""}?t=${System.currentTimeMillis()}"
+                    }
+
                     if (isEditing) {
-                        // Mode Edit: Cancel & Save di row teratas
+                        // --- MODE EDIT ---
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-
-                            // ==== BACK BUTTON (LEFT) ====
                             IconButton(onClick = { isEditing = false }) {
                                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = PrimaryBrown)
                             }
 
-                            // ==== CANCEL & CONFIRM (RIGHT) ====
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-
-                                // CANCEL BUTTON
+                            Row(verticalAlignment = Alignment.CenterVertically) {
                                 IconButton(onClick = {
                                     isEditing = false
+                                    // Reset data ke state awal
                                     if (profileState is ProfileUIState.Success) {
                                         val user = (profileState as ProfileUIState.Success).user
-                                        val nameParts = user.full_name.trim().split(" ", limit = 2)
-                                        firstName = nameParts.getOrNull(0) ?: "-"
-                                        lastName = nameParts.getOrNull(1) ?: "-"
-                                        phoneNumber = user.phone_number
-                                        bio = user.bio ?: "-"
+                                        phoneNumber = user.phone_number ?: ""
+                                        bio = user.bio ?: ""
                                         photoBytes = null
                                     }
                                 }) {
                                     Icon(Icons.Default.Close, contentDescription = "Batal")
                                 }
 
-                                // CONFIRM BUTTON
+                                // TOMBOL SIMPAN
                                 IconButton(
                                     onClick = {
                                         firstNameError = false
                                         lastNameError = false
                                         phoneNumberError = false
-                                        bioError = false
-                                        var isValid = true
 
-                                        if (firstName.isBlank() || firstName == "-") {
-                                            firstNameError = true; isValid = false
-                                        }
-                                        if (lastName.isBlank() || lastName == "-") {
-                                            lastNameError = true; isValid = false
-                                        }
-                                        if (phoneNumber.isBlank() || phoneNumber == "-") {
+                                        var isValid = true
+                                        if (firstName.isBlank()) { firstNameError = true; isValid = false }
+                                        if (lastName.isBlank()) { lastNameError = true; isValid = false }
+                                        if (phoneNumber.isNotBlank() && phoneNumber == "-") {
                                             phoneNumberError = true; isValid = false
-                                        }
-                                        if (bio.isBlank() || bio == "-") {
-                                            bioError = true; isValid = false
                                         }
 
                                         if (isValid) {
-                                            val fullName = "$firstName $lastName"
+                                            val fullName = "$firstName $lastName".trim()
+                                            // ViewModel akan menangani pengubahan string kosong "" menjadi null untuk nomor HP
                                             viewModel.saveProfileChanges(
-                                                username,
-                                                fullName,
-                                                phoneNumber,
-                                                bio,
-                                                photoBytes,
+                                                username, fullName, phoneNumber, bio, photoBytes,
                                                 onSuccess = {
                                                     Toast.makeText(context, "Profil diperbarui", Toast.LENGTH_SHORT).show()
                                                     isEditing = false
+                                                    // Fetch ulang agar gambar online terbaru muncul
                                                     viewModel.fetchUserProfile()
                                                 },
-                                                onError = { msg ->
-                                                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                                                }
+                                                onError = { msg -> Toast.makeText(context, msg, Toast.LENGTH_SHORT).show() }
                                             )
                                         } else {
-                                            Toast.makeText(context, "Semua field harus diisi", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, "Cek kembali data Anda", Toast.LENGTH_SHORT).show()
                                         }
                                     },
                                     enabled = !isUpdating
@@ -228,24 +222,22 @@ fun ProfileScreen(navController: NavController, viewModel: AuthViewModel) {
                                 }
                             }
                         }
+
                         Spacer(Modifier.height(16.dp))
 
-                        // Foto Profil di row kedua (centered)
+                        // FOTO PROFIL (MODE EDIT)
                         Box(
                             modifier = Modifier.fillMaxWidth(),
                             contentAlignment = Alignment.Center
                         ) {
                             Box(contentAlignment = Alignment.BottomEnd) {
-                                val finalImageUrl = remember(photoUrl, photoBytes) {
-                                    if (photoBytes != null) photoBytes else "${photoUrl}?t=${System.currentTimeMillis()}"
-                                }
-
                                 AsyncImage(
                                     model = ImageRequest.Builder(context)
-                                        .data(finalImageUrl)
+                                        .data(finalImageUrl) // HANYA MENGGUNAKAN URL ONLINE
                                         .crossfade(true)
-                                        .placeholder(R.drawable.ic_menu_gallery)
-                                        .error(R.drawable.ic_menu_report_image)
+                                        // Ganti R.drawable... dengan resource Anda jika error
+                                        // .placeholder(R.drawable.ic_menu_gallery)
+                                        // .error(R.drawable.ic_menu_report_image)
                                         .build(),
                                     contentDescription = "Foto Profil",
                                     contentScale = ContentScale.Crop,
@@ -253,31 +245,27 @@ fun ProfileScreen(navController: NavController, viewModel: AuthViewModel) {
                                         .size(120.dp)
                                         .clip(CircleShape)
                                         .clickable {
+                                            // Picker tetap berjalan untuk mengisi photoBytes
                                             pickPhotoLauncher.launch(
                                                 PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                                             )
                                         }
                                 )
-
+                                // Overlay Ikon Kamera
                                 Surface(
                                     shape = CircleShape,
                                     color = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(32.dp).offset(x = 4.dp, y = 4.dp)
                                 ) {
-                                    Box(
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = "📷",
-                                            style = MaterialTheme.typography.labelSmall
-                                        )
+                                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                        Text("📷", style = MaterialTheme.typography.labelSmall)
                                     }
                                 }
                             }
                         }
+
                     } else {
-                        // Mode Non-Edit: Back button & Foto Profil
+                        // --- MODE VIEW (NON-EDIT) ---
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -287,49 +275,39 @@ fun ProfileScreen(navController: NavController, viewModel: AuthViewModel) {
                                 onClick = { navController.popBackStack() },
                                 modifier = Modifier.align(Alignment.Top)
                             ) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                    contentDescription = "Back"
-                                )
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                             }
 
-                            // Foto Profil di Tengah
+                            // FOTO PROFIL (MODE VIEW)
                             Box(
                                 modifier = Modifier.weight(1f),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Box(contentAlignment = Alignment.BottomEnd) {
-                                    val finalImageUrl = remember(photoUrl, photoBytes) {
-                                        if (photoBytes != null) photoBytes else "${photoUrl}?t=${System.currentTimeMillis()}"
-                                    }
-
                                     AsyncImage(
                                         model = ImageRequest.Builder(context)
-                                            .data(finalImageUrl)
+                                            .data(finalImageUrl) // HANYA MENGGUNAKAN URL ONLINE
                                             .crossfade(true)
-                                            .placeholder(R.drawable.ic_menu_gallery)
-                                            .error(R.drawable.ic_menu_report_image)
+                                            // Ganti R.drawable... dengan resource Anda jika error
+                                            // .placeholder(R.drawable.ic_menu_gallery)
+                                            // .error(R.drawable.ic_menu_report_image)
                                             .build(),
                                         contentDescription = "Foto Profil",
                                         contentScale = ContentScale.Crop,
                                         modifier = Modifier
                                             .size(120.dp)
                                             .clip(CircleShape)
-                                            .clickable {
-                                                showDownloadDialog = true
-                                            }
+                                            .clickable { showDownloadDialog = true }
                                     )
                                 }
                             }
-
-                            // Spacer untuk balance layout
                             Spacer(modifier = Modifier.width(48.dp))
                         }
                     }
 
                     Spacer(Modifier.height(16.dp))
 
-                    // Display Name (Hanya tampil saat tidak edit)
+                    // --- SISA UI (FORM FIELD DLL) SAMA SEPERTI SEBELUMNYA ---
                     if (!isEditing) {
                         Text(
                             text = displayName,
@@ -342,76 +320,35 @@ fun ProfileScreen(navController: NavController, viewModel: AuthViewModel) {
                         Spacer(Modifier.height(16.dp))
                     }
 
-                    // --- FORM FIELDS ---
-
-                    // First Name & Last Name (Side by Side)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        // First Name
                         Column(modifier = Modifier.weight(1f)) {
                             OutlinedTextField(
                                 value = firstName,
-                                onValueChange = {
-                                    firstName = it
-                                    firstNameError = false
-                                },
+                                onValueChange = { firstName = it; firstNameError = false },
                                 label = { Text("First name") },
                                 modifier = Modifier.fillMaxWidth(),
-                                enabled = isEditing,
-                                singleLine = true,
-                                isError = firstNameError,
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                                    disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                                    disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                enabled = isEditing, singleLine = true, isError = firstNameError
                             )
                         }
-
-                        // Last Name
                         Column(modifier = Modifier.weight(1f)) {
                             OutlinedTextField(
                                 value = lastName,
-                                onValueChange = {
-                                    lastName = it
-                                    lastNameError = false
-                                },
+                                onValueChange = { lastName = it; lastNameError = false },
                                 label = { Text("Last name") },
                                 modifier = Modifier.fillMaxWidth(),
-                                enabled = isEditing,
-                                singleLine = true,
-                                isError = lastNameError,
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                                    disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                                    disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                enabled = isEditing, singleLine = true, isError = lastNameError
                             )
                         }
                     }
-
                     Spacer(Modifier.height(16.dp))
-
-                    // Email (Always Read Only)
                     OutlinedTextField(
-                        value = email,
-                        onValueChange = { },
-                        label = { Text("Email") },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = false,
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                            disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        value = email, onValueChange = { }, label = { Text("Email") },
+                        modifier = Modifier.fillMaxWidth(), enabled = false, singleLine = true
                     )
-
                     Spacer(Modifier.height(16.dp))
-
-                    // Phone Number
                     OutlinedTextField(
                         value = phoneNumber,
                         onValueChange = { input ->
@@ -422,42 +359,22 @@ fun ProfileScreen(navController: NavController, viewModel: AuthViewModel) {
                         },
                         label = { Text("Phone Number") },
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = isEditing,
-                        singleLine = true,
+                        enabled = isEditing, singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         isError = phoneNumberError,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                            disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        supportingText = {
+                            if (phoneNumberError) Text("Nomor HP tidak valid", color = MaterialTheme.colorScheme.error)
+                            else if (isEditing) Text("Kosongkan jika tidak ada", style = MaterialTheme.typography.bodySmall)
+                        }
                     )
-
                     Spacer(Modifier.height(16.dp))
-
-                    // Bio
                     OutlinedTextField(
-                        value = bio,
-                        onValueChange = {
-                            bio = it
-                            bioError = false
-                        },
-                        label = { Text("Bio") },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = isEditing,
-                        singleLine = false,
-                        maxLines = 3,
-                        isError = bioError,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                            disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        value = bio, onValueChange = { bio = it; bioError = false },
+                        label = { Text("Bio") }, modifier = Modifier.fillMaxWidth(),
+                        enabled = isEditing, singleLine = false, maxLines = 3
                     )
-
                     Spacer(Modifier.height(8.dp))
 
-                    // Text "Edit profile" (di kiri bawah field terakhir, hanya saat tidak edit)
                     if (!isEditing) {
                         Text(
                             text = "Edit profile",
@@ -466,38 +383,27 @@ fun ProfileScreen(navController: NavController, viewModel: AuthViewModel) {
                             modifier = Modifier.clickable { isEditing = true }
                         )
                     }
-
                     Spacer(Modifier.height(24.dp))
 
-                    // Tombol Logout (hanya tampil saat tidak edit)
                     if (!isEditing) {
                         Button(
                             onClick = {
                                 viewModel.logout {
-                                    navController.navigate("login") {
-                                        popUpTo(0) { inclusive = true }
-                                    }
+                                    navController.navigate("login") { popUpTo(0) { inclusive = true } }
                                 }
                             },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(56.dp),
-                            shape = MaterialTheme.shapes.medium,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary
-                            )
-                        ) {
-                            Text("Logout", style = MaterialTheme.typography.labelLarge)
-                        }
+                            modifier = Modifier.fillMaxWidth().height(56.dp),
+                            shape = MaterialTheme.shapes.medium
+                        ) { Text("Logout") }
                     }
                 }
 
-                // Dialog Download Foto
+                // Dialog Download
                 if (showDownloadDialog) {
                     AlertDialog(
                         onDismissRequest = { showDownloadDialog = false },
                         title = { Text("Foto Profil") },
-                        text = { Text("Apakah Anda ingin mengunduh foto profil ini ke galeri?") },
+                        text = { Text("Unduh foto ini?") },
                         confirmButton = {
                             TextButton(
                                 onClick = {
@@ -505,21 +411,13 @@ fun ProfileScreen(navController: NavController, viewModel: AuthViewModel) {
                                     scope.launch {
                                         state.user.photo_profile?.let { url ->
                                             val success = FileUtils.downloadImage(context, url)
-                                            Toast.makeText(
-                                                context,
-                                                if (success) "Foto tersimpan di galeri" else "Gagal mengunduh",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
+                                            Toast.makeText(context, if (success) "Tersimpan" else "Gagal", Toast.LENGTH_SHORT).show()
                                         }
                                     }
                                 }
                             ) { Text("Unduh") }
                         },
-                        dismissButton = {
-                            TextButton(onClick = { showDownloadDialog = false }) {
-                                Text("Batal")
-                            }
-                        }
+                        dismissButton = { TextButton(onClick = { showDownloadDialog = false }) { Text("Batal") } }
                     )
                 }
             }

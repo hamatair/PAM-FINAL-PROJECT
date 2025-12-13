@@ -248,7 +248,7 @@ fun RegisterScreen(navController: NavController, viewModel: AuthViewModel) {
                         // Gabungkan firstName dan lastName menjadi full_name
                         val full_name = "$firstName $lastName"
                         // Phone number kosong karena tidak ada di form
-                        val phone_number = ""
+                        val phone_number = null
 
                         // Kirim data dengan urutan: email, password, username, full_name, phone_number
                         viewModel.register(email, password, username, full_name, phone_number)
