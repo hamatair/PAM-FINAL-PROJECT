@@ -1,4 +1,4 @@
-package com.example.pam_1.ui.screens
+package com.example.pam_1.ui.screens.features.group_chat
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
@@ -14,6 +14,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.pam_1.data.model.GroupMember
 import com.example.pam_1.data.model.GroupRole
 import com.example.pam_1.viewmodel.StudyGroupUIState
 import com.example.pam_1.viewmodel.StudyGroupViewModel
@@ -298,7 +299,7 @@ fun GroupDetailScreen(navController: NavController, viewModel: StudyGroupViewMod
 
 @Composable
 fun MemberCard(
-        member: com.example.pam_1.data.model.GroupMember,
+        member: GroupMember,
         canManage: Boolean,
         isOwner: Boolean,
         onChangeRole: (GroupRole) -> Unit,

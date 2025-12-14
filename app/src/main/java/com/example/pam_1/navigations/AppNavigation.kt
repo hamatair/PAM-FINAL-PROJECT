@@ -14,6 +14,13 @@ import com.example.pam_1.data.repository.*
 import com.example.pam_1.ui.screens.*
 import com.example.pam_1.ui.screens.features.auth.*
 import com.example.pam_1.ui.screens.features.events.*
+import com.example.pam_1.ui.screens.features.group_chat.CreateEditGroupScreen
+import com.example.pam_1.ui.screens.features.group_chat.GroupChatScreen
+import com.example.pam_1.ui.screens.features.group_chat.GroupDetailScreen
+import com.example.pam_1.ui.screens.features.group_chat.InviteManagementScreen
+import com.example.pam_1.ui.screens.features.group_chat.JoinGroupScreen
+import com.example.pam_1.ui.screens.features.group_chat.StudyGroupListScreen
+import com.example.pam_1.ui.screens.features.tugas.TugasScreen
 import com.example.pam_1.viewmodel.*
 import io.github.jan.supabase.auth.auth
 
@@ -191,6 +198,19 @@ fun AppNavigation() {
 
         composable("join_group") {
             JoinGroupScreen(navController, studyGroupViewModel)
+        }
+
+        // ---------- TUGAS ----------
+        composable("task_schedule") {
+            // PERBAIKAN DISINI: Gunakan Factory + Repository
+            val tugasRepository = remember { TugasRepository() }
+            val tugasViewModel: TugasViewModel = viewModel(
+                factory = TugasViewModelFactory(tugasRepository)
+            )
+
+            TugasScreen(
+                viewModel = tugasViewModel
+            )
         }
     }
 }

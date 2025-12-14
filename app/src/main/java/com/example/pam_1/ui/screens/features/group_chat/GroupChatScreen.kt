@@ -1,4 +1,4 @@
-package com.example.pam_1.ui.screens
+package com.example.pam_1.ui.screens.features.group_chat
 
 import android.net.Uri
 import android.widget.Toast

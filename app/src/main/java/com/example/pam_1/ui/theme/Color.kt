@@ -21,3 +21,8 @@ val SuccessGreen = Color(0xFF00B383)
 val WarningYellow = Color(0xFFFFCC00)
 val DangerRed = Color(0xFFE6202D)
 
+// buat page task
+val TextSecondaryColor = Color(0xFF6D4C41) // Coklat Pudar (Deskripsi/Teks Kecil)
+
+val CardBackgroundColor = Color.White      // Tetap Putih agar kontras & bersih
+

@@ -10,17 +10,23 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.pam_1.data.SupabaseClient
 import com.example.pam_1.data.repository.EventRepository
+import com.example.pam_1.data.repository.TugasRepository // IMPORT INI
 import com.example.pam_1.navigations.NavigationItem
 import com.example.pam_1.navigations.navigateSafe
 import com.example.pam_1.ui.common.AnimatedBottomNavigationBar
 import com.example.pam_1.ui.screens.features.events.EventListScreen
+import com.example.pam_1.ui.screens.features.group_chat.StudyGroupListScreen
+import com.example.pam_1.ui.screens.features.tugas.TugasScreen
 import com.example.pam_1.viewmodel.AuthViewModel
 import com.example.pam_1.viewmodel.EventViewModel
 import com.example.pam_1.viewmodel.EventViewModelFactory
 import com.example.pam_1.viewmodel.StudyGroupViewModel
+import com.example.pam_1.viewmodel.TugasViewModel
+import com.example.pam_1.viewmodel.TugasViewModelFactory // IMPORT INI
 
 // ==========================
 // TOP APP BAR
@@ -67,10 +73,9 @@ fun MainAppScreen(
 
     // --- Event ViewModel (shared di MainApp) ---
     val eventRepository = remember { EventRepository(SupabaseClient.client) }
-    val eventViewModel: EventViewModel =
-        androidx.lifecycle.viewmodel.compose.viewModel(
-            factory = EventViewModelFactory(eventRepository)
-        )
+    val eventViewModel: EventViewModel = viewModel(
+        factory = EventViewModelFactory(eventRepository)
+    )
 
     Scaffold(
         topBar = { AppToolbar(navController) },
@@ -90,9 +95,21 @@ fun MainAppScreen(
             contentAlignment = Alignment.Center
         ) {
             when (currentTab) {
+                // ================= TUGAS TAB =================
+                NavigationItem.Tugas.route -> {
+                    // PERBAIKAN DISINI: Gunakan Factory untuk TugasViewModel
+                    val tugasRepository = remember { TugasRepository() }
+                    val tugasViewModel: TugasViewModel = viewModel(
+                        factory = TugasViewModelFactory(tugasRepository)
+                    )
 
-                NavigationItem.Tugas.route ->
-                    DummyScreen("Halaman Tugas")
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.TopStart
+                    ) {
+                        TugasScreen(viewModel = tugasViewModel)
+                    }
+                }
 
                 NavigationItem.Keuangan.route ->
                     DummyScreen("Halaman Keuangan")
