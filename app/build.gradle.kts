@@ -96,6 +96,7 @@ dependencies {
     implementation(libs.androidx.tools.core)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.room.common.jvm)
+    implementation(libs.androidx.compose.runtime)
 
     // Testing
     testImplementation(libs.junit)

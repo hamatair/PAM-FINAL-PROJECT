@@ -14,14 +14,18 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.pam_1.data.SupabaseClient
 import com.example.pam_1.data.repository.EventRepository
+import com.example.pam_1.data.repository.NoteRepository
 import com.example.pam_1.navigations.NavigationItem
 // PENTING: Import extension function navigateSafe yang sudah dibuat
 import com.example.pam_1.navigations.navigateSafe
 import com.example.pam_1.ui.common.AnimatedBottomNavigationBar
 import com.example.pam_1.ui.screens.features.events.EventListScreen
+import com.example.pam_1.ui.screens.features.notes.NotesListScreen
 import com.example.pam_1.viewmodel.AuthViewModel
 import com.example.pam_1.viewmodel.EventViewModel
 import com.example.pam_1.viewmodel.EventViewModelFactory
+import com.example.pam_1.viewmodel.NoteViewModel
+import com.example.pam_1.viewmodel.NoteViewModelFactory
 
 @Composable
 fun MainAppScreen(
@@ -41,6 +45,11 @@ fun MainAppScreen(
     val eventViewModel: EventViewModel = viewModel(
         factory = EventViewModelFactory(eventRepository)
     )
+    val noteRepository = remember { NoteRepository(SupabaseClient.client) }
+    val noteViewModel: NoteViewModel = viewModel(
+        factory = NoteViewModelFactory(noteRepository)
+    )
+
 
     Scaffold(
         bottomBar = {
@@ -63,7 +72,17 @@ fun MainAppScreen(
                 NavigationItem.Tugas.route -> DummyScreen("Halaman Tugas")
                 NavigationItem.Keuangan.route -> DummyScreen("Halaman Keuangan")
                 NavigationItem.Grup.route -> DummyScreen("Halaman Grup")
-                NavigationItem.Catatan.route -> DummyScreen("Halaman Catatan")
+                NavigationItem.Catatan.route -> {
+                        NotesListScreen(
+                            viewModel = noteViewModel,
+                            onAddNote = {
+                                navController.navigateSafe("note/add")
+                            },
+                            onNoteClick = { noteId ->
+                                navController.navigateSafe("note/read/$noteId")
+                            }
+                        )
+                }
 
                 // --- TAB EVENT ---
                 NavigationItem.Event.route -> {
