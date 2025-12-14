@@ -23,6 +23,8 @@ import com.example.pam_1.viewmodel.AuthViewModel
 import com.example.pam_1.viewmodel.AuthViewModelFactory
 import com.example.pam_1.viewmodel.EventViewModel
 import com.example.pam_1.viewmodel.EventViewModelFactory
+import com.example.pam_1.ui.screens.TugasScreen
+import com.example.pam_1.viewmodel.TugasViewModel
 import io.github.jan.supabase.auth.auth
 
 @Composable
@@ -112,6 +114,21 @@ fun AppNavigation() {
                 viewModel = eventViewModel,
                 // FIX: Gunakan popBackStackSafe
                 onNavigateBack = { navController.popBackStackSafe() }
+            )
+        }
+
+        // 5. FITUR TUGAS SAYA (TASK SCHEDULE)
+        composable("task_schedule") {
+            // 1. Inisialisasi ViewModel kamu
+            // Karena ViewModel kamu belum pakai Supabase/Repository (masih dummy),
+            // panggilnya cukup pakai viewModel() biasa.
+            val tugasViewModel: TugasViewModel = viewModel()
+
+            // 2. Panggil Screen kamu
+            TugasScreen(
+                viewModel = tugasViewModel
+                // Nanti kalau butuh navigasi balik, bisa tambah parameter onBack di TugasScreen
+                // onNavigateBack = { navController.popBackStackSafe() }
             )
         }
     }

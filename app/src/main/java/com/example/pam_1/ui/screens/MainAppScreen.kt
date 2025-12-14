@@ -22,6 +22,8 @@ import com.example.pam_1.ui.screens.features.events.EventListScreen
 import com.example.pam_1.viewmodel.AuthViewModel
 import com.example.pam_1.viewmodel.EventViewModel
 import com.example.pam_1.viewmodel.EventViewModelFactory
+import com.example.pam_1.ui.screens.TugasScreen
+import com.example.pam_1.viewmodel.TugasViewModel
 
 @Composable
 fun MainAppScreen(
@@ -42,6 +44,10 @@ fun MainAppScreen(
         factory = EventViewModelFactory(eventRepository)
     )
 
+    // --- [BARU] INISIALISASI VIEWMODEL KAMU DISINI ---
+    // Karena belum pakai repository (masih dummy), cukup panggil viewModel() biasa
+    val tugasViewModel: TugasViewModel = viewModel()
+
     Scaffold(
         bottomBar = {
             AnimatedBottomNavigationBar(
@@ -60,7 +66,13 @@ fun MainAppScreen(
             contentAlignment = Alignment.Center
         ) {
             when (currentTab) {
-                NavigationItem.Tugas.route -> DummyScreen("Halaman Tugas")
+                // --- [BARU] GANTI DUMMY DENGAN SCREEN ASLI KAMU ---
+                NavigationItem.Tugas.route -> {
+                    // Kita bungkus Box lagi biar rapi (opsional)
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopStart) {
+                        TugasScreen(viewModel = tugasViewModel)
+                    }
+                }
                 NavigationItem.Keuangan.route -> DummyScreen("Halaman Keuangan")
                 NavigationItem.Grup.route -> DummyScreen("Halaman Grup")
                 NavigationItem.Catatan.route -> DummyScreen("Halaman Catatan")
