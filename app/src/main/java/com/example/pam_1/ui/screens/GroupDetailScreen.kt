@@ -177,6 +177,17 @@ fun GroupDetailScreen(navController: NavController, viewModel: StudyGroupViewMod
                             Text("Leave")
                         }
                     }
+
+                    if (userRole == null && group.isPublic) {
+                        Button(
+                                onClick = { viewModel.joinGroup(groupId) },
+                                modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Join Group")
+                        }
+                    }
                 }
 
                 Spacer(Modifier.height(8.dp))

@@ -11,6 +11,7 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.*
 
 class GroupInviteRepository {
     private val client = SupabaseClient.client
@@ -18,190 +19,189 @@ class GroupInviteRepository {
 
     /** Create a new invite for a group */
     suspend fun createInvite(
-        // Asumsi `groupId` juga seharusnya Long berdasarkan konteks
-        groupId: Long,
-        maxUses: Int = 1,
-        expiresInDays: Int? = 7,
-        note: String? = null
+            // Asumsi `groupId` juga seharusnya Long berdasarkan konteks
+            groupId: Long,
+            maxUses: Int = 1,
+            expiresInDays: Int? = 7,
+            note: String? = null
     ): Result<GroupInvite> =
-        withContext(Dispatchers.IO) {
-            try {
-                val userId =
-                    client.auth.currentUserOrNull()?.id
-                        ?: return@withContext Result.failure(
-                            Exception("User not authenticated")
-                        )
+            withContext(Dispatchers.IO) {
+                try {
+                    val userId =
+                            client.auth.currentUserOrNull()?.id
+                                    ?: return@withContext Result.failure(
+                                            Exception("User not authenticated")
+                                    )
 
-                val code = InviteCodeGenerator.generateCode()
-                val expiresAt =
-                    expiresInDays?.let {
-                        Instant.now().plus(it.toLong(), ChronoUnit.DAYS).toString()
+                    val code = InviteCodeGenerator.generateCode()
+                    val expiresAt =
+                            expiresInDays?.let {
+                                Instant.now().plus(it.toLong(), ChronoUnit.DAYS).toString()
+                            }
+
+                    val newInvite = buildJsonObject {
+                        put("group_id", groupId)
+                        put("code", code)
+                        put("created_by", userId)
+                        expiresAt?.let { put("expires_at", it) }
+                        put("max_uses", maxUses)
+                        note?.let { put("note", it) }
                     }
 
-                val newInvite =
-                    mapOf(
-                        "group_id" to groupId,
-                        "code" to code,
-                        "created_by" to userId,
-                        "expires_at" to expiresAt,
-                        "max_uses" to maxUses,
-                        "note" to note
-                    )
+                    val result =
+                            client.from("group_invites")
+                                    .insert(newInvite) { select() }
+                                    .decodeSingle<GroupInvite>()
 
-                val result =
-                    client.from("group_invites")
-                        .insert(newInvite) { select() }
-                        .decodeSingle<GroupInvite>()
-
-                Result.success(result)
-            } catch (e: Exception) {
-                Result.failure(e)
+                    Result.success(result)
+                } catch (e: Exception) {
+                    Result.failure(e)
+                }
             }
-        }
 
     /**
      * Validate an invite code before joining Returns the invite if valid, or error if
      * invalid/expired/used up
      */
     suspend fun validateInvite(code: String): Result<GroupInvite> =
-        withContext(Dispatchers.IO) {
-            try {
-                // Find the invite by code
-                val invite =
-                    client.from("group_invites")
-                        .select {
-                            filter {
-                                eq("code", code)
-                                eq("is_active", true)
-                            }
+            withContext(Dispatchers.IO) {
+                try {
+                    // Find the invite by code
+                    val invite =
+                            client.from("group_invites")
+                                    .select {
+                                        filter {
+                                            eq("code", code)
+                                            eq("is_active", true)
+                                        }
+                                    }
+                                    .decodeList<GroupInvite>()
+                                    .firstOrNull()
+                                    ?: return@withContext Result.failure(
+                                            Exception("Invalid invite code")
+                                    )
+
+                    // Check if expired
+                    invite.expiresAt?.let { expiresAt ->
+                        val expiry = Instant.parse(expiresAt)
+                        if (Instant.now().isAfter(expiry)) {
+                            return@withContext Result.failure(Exception("Invite code has expired"))
                         }
-                        .decodeList<GroupInvite>()
-                        .firstOrNull()
-                        ?: return@withContext Result.failure(
-                            Exception("Invalid invite code")
-                        )
-
-                // Check if expired
-                invite.expiresAt?.let { expiresAt ->
-                    val expiry = Instant.parse(expiresAt)
-                    if (Instant.now().isAfter(expiry)) {
-                        return@withContext Result.failure(Exception("Invite code has expired"))
                     }
-                }
 
-                // Check if max uses reached
-                if (invite.maxUses > 0 && invite.usedCount >= invite.maxUses) {
-                    return@withContext Result.failure(
-                        Exception("Invite code has been fully used")
-                    )
-                }
+                    // Check if max uses reached
+                    if (invite.maxUses > 0 && invite.usedCount >= invite.maxUses) {
+                        return@withContext Result.failure(
+                                Exception("Invite code has been fully used")
+                        )
+                    }
 
-                Result.success(invite)
-            } catch (e: Exception) {
-                Result.failure(e)
+                    Result.success(invite)
+                } catch (e: Exception) {
+                    Result.failure(e)
+                }
             }
-        }
 
     /**
      * Join a group using an invite code Validates the code, adds the user as a member, and
      * increments usage
      */
     suspend fun joinByCode(code: String): Result<Long> =
-        withContext(Dispatchers.IO) {
-            try {
-                val userId =
-                    client.auth.currentUserOrNull()?.id
-                        ?: return@withContext Result.failure(
-                            Exception("User not authenticated")
+            withContext(Dispatchers.IO) {
+                try {
+                    val userId =
+                            client.auth.currentUserOrNull()?.id
+                                    ?: return@withContext Result.failure(
+                                            Exception("User not authenticated")
+                                    )
+
+                    // Validate the invite
+                    val invite =
+                            validateInvite(code).getOrElse { e ->
+                                return@withContext Result.failure(e)
+                            }
+
+                    // Check if user is already a member
+                    // PERBAIKAN: Pastikan isMember menerima Long (ini sudah benar dari sebelumnya)
+                    val isMember = memberRepository.isMember(invite.groupId).getOrElse { false }
+                    if (isMember) {
+                        return@withContext Result.failure(
+                                Exception("You are already a member of this group")
                         )
-
-                // Validate the invite
-                val invite =
-                    validateInvite(code).getOrElse { e ->
-                        return@withContext Result.failure(e)
                     }
 
-                // Check if user is already a member
-                // PERBAIKAN: Pastikan isMember menerima Long (ini sudah benar dari sebelumnya)
-                val isMember = memberRepository.isMember(invite.groupId).getOrElse { false }
-                if (isMember) {
-                    return@withContext Result.failure(
-                        Exception("You are already a member of this group")
-                    )
+                    // Add user as member
+                    memberRepository.addMember(
+                                    groupId = invite.groupId,
+                                    userId = userId,
+                                    role = GroupRole.MEMBER
+                            )
+                            .getOrElse { e ->
+                                return@withContext Result.failure(e)
+                            }
+
+                    // Increment used_count
+                    val newUsedCount = invite.usedCount + 1
+                    val shouldDeactivate = invite.maxUses > 0 && newUsedCount >= invite.maxUses
+
+                    // PERBAIKAN: eq() bisa menangani Long, tidak perlu .toString()
+                    client.from("group_invites").update(
+                                    buildJsonObject {
+                                        put("used_count", newUsedCount)
+                                        put("is_active", !shouldDeactivate)
+                                    }
+                            ) { filter { eq("id", invite.id!!) } }
+
+                    Result.success(invite.groupId)
+                } catch (e: Exception) {
+                    Result.failure(e)
                 }
-
-                // Add user as member
-                memberRepository.addMember(
-                    groupId = invite.groupId,
-                    userId = userId,
-                    role = GroupRole.MEMBER
-                )
-                    .getOrElse { e ->
-                        return@withContext Result.failure(e)
-                    }
-
-                // Increment used_count
-                val newUsedCount = invite.usedCount + 1
-                val shouldDeactivate = invite.maxUses > 0 && newUsedCount >= invite.maxUses
-
-                // PERBAIKAN: eq() bisa menangani Long, tidak perlu .toString()
-                client.from("group_invites").update(
-                    mapOf(
-                        "used_count" to newUsedCount,
-                        "is_active" to !shouldDeactivate
-                    )
-                ) { filter { eq("id", invite.id!!) } }
-
-                Result.success(invite.groupId)
-            } catch (e: Exception) {
-                Result.failure(e)
             }
-        }
 
     /** Get all invites for a group Only accessible by owner/moderator */
     // PERBAIKAN: Mengubah groupId dari String ke Long agar konsisten
     suspend fun getGroupInvites(groupId: Long): Result<List<GroupInvite>> =
-        withContext(Dispatchers.IO) {
-            try {
-                val invites =
-                    client.from("group_invites")
-                        .select {
-                            filter { eq("group_id", groupId) }
-                            order("created_at", order = Order.DESCENDING)
-                        }
-                        .decodeList<GroupInvite>()
+            withContext(Dispatchers.IO) {
+                try {
+                    val invites =
+                            client.from("group_invites")
+                                    .select {
+                                        filter { eq("group_id", groupId) }
+                                        order("created_at", order = Order.DESCENDING)
+                                    }
+                                    .decodeList<GroupInvite>()
 
-                Result.success(invites)
-            } catch (e: Exception) {
-                Result.failure(e)
+                    Result.success(invites)
+                } catch (e: Exception) {
+                    Result.failure(e)
+                }
             }
-        }
 
     /** Deactivate an invite */
     // PERBAIKAN: Mengubah inviteId dari String ke Long
     suspend fun deactivateInvite(inviteId: Long): Result<Unit> =
-        withContext(Dispatchers.IO) {
-            try {
-                client.from("group_invites").update(mapOf("is_active" to false)) {
-                    filter { eq("id", inviteId) }
-                }
+            withContext(Dispatchers.IO) {
+                try {
+                    client.from("group_invites").update(
+                                    buildJsonObject { put("is_active", false) }
+                            ) { filter { eq("id", inviteId) } }
 
-                Result.success(Unit)
-            } catch (e: Exception) {
-                Result.failure(e)
+                    Result.success(Unit)
+                } catch (e: Exception) {
+                    Result.failure(e)
+                }
             }
-        }
 
     /** Delete an invite permanently */
     // PERBAIKAN: Mengubah inviteId dari String ke Long
     suspend fun deleteInvite(inviteId: Long): Result<Unit> =
-        withContext(Dispatchers.IO) {
-            try {
-                client.from("group_invites").delete { filter { eq("id", inviteId) } }
+            withContext(Dispatchers.IO) {
+                try {
+                    client.from("group_invites").delete { filter { eq("id", inviteId) } }
 
-                Result.success(Unit)
-            } catch (e: Exception) {
-                Result.failure(e)
+                    Result.success(Unit)
+                } catch (e: Exception) {
+                    Result.failure(e)
+                }
             }
-        }
 }

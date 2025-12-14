@@ -329,4 +329,34 @@ class StudyGroupViewModel(
                     }
         }
     }
+
+    /** Join a public group directly (no invite code needed) */
+    fun joinGroup(groupId: Long) {
+        viewModelScope.launch {
+            uiState = StudyGroupUIState.Loading
+            memberRepository
+                    .addMember(
+                            groupId = groupId,
+                            userId = "", // Will be set by repository
+                            role = GroupRole.MEMBER
+                    )
+                    .onSuccess {
+                        uiState = StudyGroupUIState.Success("Joined group successfully")
+                        loadMyGroups()
+                        loadPublicGroups()
+                        // Reload group details to update UI
+                        loadCurrentUserRole(groupId)
+                        loadMemberCount(groupId)
+                        loadGroupMembers(groupId)
+                    }
+                    .onFailure { e ->
+                        uiState = StudyGroupUIState.Error(e.message ?: "Failed to join group")
+                    }
+        }
+    }
+
+    /** Check if current user is member of a group */
+    suspend fun checkIsMember(groupId: Long): Boolean {
+        return memberRepository.isMember(groupId).getOrDefault(false)
+    }
 }

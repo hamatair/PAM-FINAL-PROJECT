@@ -73,8 +73,22 @@ class GroupMemberRepository {
     ): Result<GroupMember> =
             withContext(Dispatchers.IO) {
                 try {
-                    val newMember =
-                            mapOf("group_id" to groupId, "user_id" to userId, "role" to role.value)
+                    // Get current user if userId is empty
+                    val actualUserId =
+                            if (userId.isBlank()) {
+                                client.auth.currentUserOrNull()?.id
+                                        ?: return@withContext Result.failure(
+                                                Exception("User not authenticated")
+                                        )
+                            } else {
+                                userId
+                            }
+
+                    val newMember = buildJsonObject {
+                        put("group_id", groupId)
+                        put("user_id", actualUserId)
+                        put("role", role.value)
+                    }
 
                     val result =
                             client.from("group_members")
@@ -117,7 +131,7 @@ class GroupMemberRepository {
                 try {
                     val result =
                             client.from("group_members")
-                                    .update(mapOf("role" to newRole.value)) {
+                                    .update(buildJsonObject { put("role", newRole.value) }) {
                                         filter {
                                             eq("group_id", groupId)
                                             eq("user_id", userId)
