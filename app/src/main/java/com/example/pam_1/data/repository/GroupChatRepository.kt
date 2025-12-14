@@ -60,9 +60,7 @@ class GroupChatRepository(private val context: Context) {
         ): Result<List<GroupMessage>> =
                 withContext(Dispatchers.IO) {
                         try {
-                                // Note: Not joining profiles here because sender_id references
-                                // auth.users
-                                // Profile info can be fetched separately if needed
+                                // First, get messages
                                 val messages =
                                         client.from("group_messages")
                                                 .select {
@@ -76,8 +74,70 @@ class GroupChatRepository(private val context: Context) {
                                                 }
                                                 .decodeList<GroupMessage>()
 
-                                Result.success(messages)
+                                // Get unique sender IDs
+                                val senderIds = messages.map { it.senderId }.distinct()
+
+                                // Batch fetch user profiles from public.users table
+                                val userProfiles =
+                                        if (senderIds.isNotEmpty()) {
+                                                try {
+                                                        // Simple data class to receive user data
+                                                        @kotlinx.serialization.Serializable
+                                                        data class UserProfile(
+                                                                @kotlinx.serialization.SerialName(
+                                                                        "user_id"
+                                                                )
+                                                                val userId: String,
+                                                                @kotlinx.serialization.SerialName(
+                                                                        "full_name"
+                                                                )
+                                                                val fullName: String? = null,
+                                                                @kotlinx.serialization.SerialName(
+                                                                        "username"
+                                                                )
+                                                                val username: String? = null
+                                                        )
+
+                                                        val users =
+                                                                client.from("users")
+                                                                        .select {
+                                                                                filter {
+                                                                                        isIn(
+                                                                                                "user_id",
+                                                                                                senderIds
+                                                                                        )
+                                                                                }
+                                                                        }
+                                                                        .decodeList<UserProfile>()
+
+                                                        users.associate { user ->
+                                                                user.userId to
+                                                                        (user.fullName to
+                                                                                user.username)
+                                                        }
+                                                } catch (e: Exception) {
+                                                        e.printStackTrace()
+                                                        emptyMap()
+                                                }
+                                        } else {
+                                                emptyMap()
+                                        }
+
+                                // Enhance messages with user profile info
+                                val enhancedMessages =
+                                        messages.map { message ->
+                                                val (fullName, username) =
+                                                        userProfiles[message.senderId]
+                                                                ?: (null to null)
+                                                message.copy(
+                                                        senderFullName = fullName,
+                                                        senderUsername = username
+                                                )
+                                        }
+
+                                Result.success(enhancedMessages)
                         } catch (e: Exception) {
+                                e.printStackTrace()
                                 Result.failure(e)
                         }
                 }
