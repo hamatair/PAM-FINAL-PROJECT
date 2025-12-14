@@ -91,9 +91,11 @@ fun AppNavigation() {
         composable("home") {
             MainAppScreen(
                 navController = navController,
-                viewModel = authViewModel
+                authViewModel = authViewModel,
+                studyGroupViewModel = studyGroupViewModel
             )
         }
+
 
         // ---------- EVENT ----------
         composable("add_event") {
