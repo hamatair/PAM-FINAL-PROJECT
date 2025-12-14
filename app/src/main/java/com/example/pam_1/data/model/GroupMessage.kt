@@ -16,8 +16,8 @@ data class GroupMessage(
         @SerialName("updated_at") val updatedAt: String? = null,
 
         // Sender profile info (from joined query)
-        val senderUsername: String? = null,
-        val senderFullName: String? = null
+        @SerialName("sender_username") val senderUsername: String? = null,
+        @SerialName("sender_full_name") val senderFullName: String? = null
 )
 
 // Helper enum for message types
