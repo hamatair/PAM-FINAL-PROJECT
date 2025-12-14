@@ -1,29 +1,34 @@
 package com.example.pam_1.data.repository
 
+import com.example.pam_1.data.SupabaseClient
 import com.example.pam_1.data.model.Expense
-import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.storage.storage
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 
-class ExpenseRepository(private val supabaseClient: SupabaseClient) {
+class ExpenseRepository {
 
-    /**
-     * Fetch all expenses for the current user
-     */
+    private val client = SupabaseClient.client
+
+    /* ================= FETCH EXPENSES (READ) ================= */
+
     suspend fun fetchExpenses(): List<Expense> {
         return try {
-            val userId = supabaseClient.auth.currentUserOrNull()?.id
-                ?: throw Exception("User not authenticated")
+            // Get current user ID
+            val currentUser = client.auth.currentUserOrNull()
+            val currentUserId = currentUser?.id
+                ?: throw Exception("You must be logged in to fetch expenses")
 
-            supabaseClient
-                .from("expenses")
+            // Fetch expenses for current user with server-side filter
+            client.from("expenses")
                 .select {
                     filter {
-                        eq("user_id", userId)
+                        eq("user_id", currentUserId)
                     }
                 }
                 .decodeList<Expense>()
@@ -32,118 +37,98 @@ class ExpenseRepository(private val supabaseClient: SupabaseClient) {
         }
     }
 
-    /**
-     * Add a new expense
-     */
+    /* ================= GET EXPENSE BY ID ================= */
+
+    suspend fun getExpenseById(expenseId: Int): Expense? {
+        return try {
+            val currentUser = client.auth.currentUserOrNull()
+            val currentUserId = currentUser?.id
+                ?: throw Exception("You must be logged in")
+
+            // Fetch specific expense by ID and user
+            client.from("expenses")
+                .select {
+                    filter {
+                        eq("id", expenseId)
+                        eq("user_id", currentUserId)
+                    }
+                }
+                .decodeList<Expense>()
+                .firstOrNull()
+        } catch (e: Exception) {
+            throw Exception("Failed to fetch expense: ${e.message}")
+        }
+    }
+
+    /* ================= UPLOAD IMAGE ================= */
+
+    suspend fun uploadExpenseImage(file: File): String {
+        return withContext(Dispatchers.IO) {
+            try {
+                val fileName = "expense_${System.currentTimeMillis()}.jpg"
+                val bytes = file.readBytes()
+
+                val storageClient = client.storage["expense_images"]
+                storageClient.upload(path = fileName, data = bytes) {
+                    upsert = true
+                }
+
+                // Return public URL
+                storageClient.publicUrl(fileName)
+            } catch (e: Exception) {
+                throw Exception("Failed to upload image: ${e.message}")
+            }
+        }
+    }
+
+    /* ================= ADD EXPENSE ================= */
+
     suspend fun addExpense(
         title: String,
         amount: Long,
         category: String,
         imageUrl: String? = null
-    ): Expense {
-        return try {
-            val userId = supabaseClient.auth.currentUserOrNull()?.id
-                ?: throw Exception("User not authenticated")
+    ) {
+        try {
+            // Get current user ID
+            val currentUser = client.auth.currentUserOrNull()
+            val currentUserId = currentUser?.id
+                ?: throw Exception("You must be logged in to add expense")
 
+            // Get current date
             val currentDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
                 .format(Date())
 
+            // Create expense object
             val expense = Expense(
-                userId = userId,
+                userId = currentUserId,
                 title = title,
-                amount = amount,
                 category = category,
-                expenseDate = currentDate,
-                imageUrl = imageUrl
+                imageUrl = imageUrl,
+                amount = amount,
+                expenseDate = currentDate
             )
 
-            supabaseClient
-                .from("expenses")
-                .insert(expense) {
-                    select()
-                }
-                .decodeSingle<Expense>()
+            // Insert to database
+            client.from("expenses").insert(expense) {
+                select()
+            }
         } catch (e: Exception) {
             throw Exception("Failed to add expense: ${e.message}")
         }
     }
 
-    /**
-     * Upload image to Supabase Storage and return the public URL
-     */
-    suspend fun uploadExpenseImage(file: File): String {
-        return try {
-            val userId = supabaseClient.auth.currentUserOrNull()?.id
-                ?: throw Exception("User not authenticated")
+    /* ================= DELETE EXPENSE ================= */
 
-            val fileName = "${userId}_${System.currentTimeMillis()}_${file.name}"
-            val bucket = supabaseClient.storage.from("expense_images")
-
-            // Upload file
-            bucket.upload(fileName, file.readBytes())
-
-            // Get public URL
-            bucket.publicUrl(fileName)
-        } catch (e: Exception) {
-            throw Exception("Failed to upload image: ${e.message}")
-        }
-    }
-
-    /**
-     * Delete an expense by ID
-     */
     suspend fun deleteExpense(expenseId: Int) {
         try {
-            supabaseClient
-                .from("expenses")
-                .delete {
-                    filter {
-                        eq("id", expenseId)
-                    }
+            client.from("expenses").delete {
+                filter {
+                    eq("id", expenseId)
                 }
+            }
         } catch (e: Exception) {
             throw Exception("Failed to delete expense: ${e.message}")
-        }
-    }
-
-    /**
-     * Get a single expense by ID
-     */
-    suspend fun getExpenseById(expenseId: Int): Expense? {
-        return try {
-            val userId = supabaseClient.auth.currentUserOrNull()?.id
-                ?: throw Exception("User not authenticated")
-
-            val expenses = supabaseClient
-                .from("expenses")
-                .select {
-                    filter {
-                        eq("id", expenseId)
-                        eq("user_id", userId)
-                    }
-                }
-                .decodeList<Expense>()
-
-            expenses.firstOrNull()
-        } catch (e: Exception) {
-            null
-        }
-    }
-
-    /**
-     * Update an existing expense
-     */
-    suspend fun updateExpense(expense: Expense) {
-        try {
-            supabaseClient
-                .from("expenses")
-                .update(expense) {
-                    filter {
-                        eq("id", expense.id ?: 0)
-                    }
-                }
-        } catch (e: Exception) {
-            throw Exception("Failed to update expense: ${e.message}")
         }
     }
 }

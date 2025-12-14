@@ -14,16 +14,20 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.pam_1.data.SupabaseClient
 import com.example.pam_1.data.repository.EventRepository
+import com.example.pam_1.data.repository.ExpenseRepository
 import com.example.pam_1.data.repository.TugasRepository // IMPORT INI
 import com.example.pam_1.navigations.NavigationItem
 import com.example.pam_1.navigations.navigateSafe
 import com.example.pam_1.ui.common.AnimatedBottomNavigationBar
 import com.example.pam_1.ui.screens.features.events.EventListScreen
+import com.example.pam_1.ui.screens.features.finance.ExpenseHomeScreen
 import com.example.pam_1.ui.screens.features.group_chat.StudyGroupListScreen
 import com.example.pam_1.ui.screens.features.tugas.TugasScreen
 import com.example.pam_1.viewmodel.AuthViewModel
 import com.example.pam_1.viewmodel.EventViewModel
 import com.example.pam_1.viewmodel.EventViewModelFactory
+import com.example.pam_1.viewmodel.ExpenseViewModel
+import com.example.pam_1.viewmodel.ExpenseViewModelFactory
 import com.example.pam_1.viewmodel.StudyGroupViewModel
 import com.example.pam_1.viewmodel.TugasViewModel
 import com.example.pam_1.viewmodel.TugasViewModelFactory // IMPORT INI
@@ -61,7 +65,8 @@ private fun AppToolbar(navController: NavController) {
 fun MainAppScreen(
     navController: NavController,
     authViewModel: AuthViewModel,
-    studyGroupViewModel: StudyGroupViewModel
+    studyGroupViewModel: StudyGroupViewModel,
+    expenseViewModel: ExpenseViewModel // ✅ Terima shared instance
 ) {
     // --- restore tab terakhir ---
     val initialTab = authViewModel.lastActiveTab.collectAsState().value
@@ -111,8 +116,19 @@ fun MainAppScreen(
                     }
                 }
 
-                NavigationItem.Keuangan.route ->
-                    DummyScreen("Halaman Keuangan")
+                // ================= KEUANGAN TAB =================
+                NavigationItem.Keuangan.route -> {
+                    // ✅ GUNAKAN shared instance (BUKAN buat baru!)
+                    ExpenseHomeScreen(
+                        viewModel = expenseViewModel,
+                        onAddExpenseClick = {
+                            navController.navigateSafe("add_expense")
+                        },
+                        onExpenseClick = { expenseId ->
+                            navController.navigateSafe("expense_detail/$expenseId")
+                        }
+                    )
+                }
 
                 // ================= EVENT TAB =================
                 NavigationItem.Event.route -> {

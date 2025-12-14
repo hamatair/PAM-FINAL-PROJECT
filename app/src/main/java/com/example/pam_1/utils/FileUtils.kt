@@ -4,15 +4,40 @@ package com.example.pam_1.utils
 
 import android.content.ContentValues
 import android.content.Context
+import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileOutputStream
 import java.net.URL
 import java.util.UUID
 
 object FileUtils {
+
+    /**
+     * Convert Uri to File for uploading
+     * Returns null if conversion fails
+     */
+    fun getFileFromUri(context: Context, uri: Uri): File? {
+        return try {
+            val contentResolver = context.contentResolver
+            val tempFile = File(context.cacheDir, "temp_${System.currentTimeMillis()}.jpg")
+            
+            contentResolver.openInputStream(uri)?.use { inputStream ->
+                FileOutputStream(tempFile).use { outputStream ->
+                    inputStream.copyTo(outputStream)
+                }
+            }
+            
+            tempFile
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
 
     // ✅ UBAH MENJADI suspend fun (operasi jaringan harus di background thread)
     // ✅ Tambahkan parameter 'mimeType' untuk fleksibilitas

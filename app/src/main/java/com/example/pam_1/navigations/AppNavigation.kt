@@ -64,6 +64,16 @@ fun AppNavigation() {
     )
 
     // ===============================
+    // EXPENSE SETUP (SHARED INSTANCE)
+    // ===============================
+    // ✅ PENTING: Buat SATU instance di NavHost level
+    // Instance ini akan di-share ke SEMUA expense screens
+    val expenseRepository = remember { ExpenseRepository() }
+    val expenseViewModel: ExpenseViewModel = viewModel(
+        factory = ExpenseViewModelFactory(expenseRepository)
+    )
+
+    // ===============================
     // NAVIGATION GRAPH
     // ===============================
     NavHost(
@@ -99,7 +109,8 @@ fun AppNavigation() {
             MainAppScreen(
                 navController = navController,
                 authViewModel = authViewModel,
-                studyGroupViewModel = studyGroupViewModel
+                studyGroupViewModel = studyGroupViewModel,
+                expenseViewModel = expenseViewModel // ✅ Pass shared instance
             )
         }
 
@@ -210,6 +221,29 @@ fun AppNavigation() {
 
             TugasScreen(
                 viewModel = tugasViewModel
+            )
+        }
+
+        // ---------- EXPENSE ----------
+        composable("add_expense") {
+            // ✅ Gunakan shared instance (BUKAN buat baru!)
+            com.example.pam_1.ui.screens.features.finance.AddExpenseScreen(
+                viewModel = expenseViewModel,
+                onNavigateBack = { navController.popBackStackSafe() }
+            )
+        }
+
+        composable(
+            route = "expense_detail/{expenseId}",
+            arguments = listOf(navArgument("expenseId") { type = NavType.IntType })
+        ) { backStackEntry ->
+            val expenseId = backStackEntry.arguments?.getInt("expenseId") ?: 0
+            
+            // ✅ Gunakan shared instance (BUKAN buat baru!)
+            com.example.pam_1.ui.screens.features.finance.ExpenseDetailScreen(
+                expenseId = expenseId,
+                viewModel = expenseViewModel,
+                onNavigateBack = { navController.popBackStackSafe() }
             )
         }
     }

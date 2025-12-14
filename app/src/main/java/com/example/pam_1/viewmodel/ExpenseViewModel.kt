@@ -17,14 +17,8 @@ import kotlinx.coroutines.launch
 sealed class ExpenseUiState {
     object Idle : ExpenseUiState()
     object Loading : ExpenseUiState()
+    object Success : ExpenseUiState()  // Added Success state for navigation
     data class Error(val message: String) : ExpenseUiState()
-    // REMOVED: Success - moved to navigation event
-}
-
-/* ================= NAVIGATION EVENT ================= */
-
-sealed class ExpenseNavigationEvent {
-    object NavigateBack : ExpenseNavigationEvent()
 }
 
 /* ================= DETAIL STATE ================= */
@@ -47,10 +41,6 @@ class ExpenseViewModel(
     private val _uiState = MutableStateFlow<ExpenseUiState>(ExpenseUiState.Idle)
     val uiState: StateFlow<ExpenseUiState> = _uiState
 
-    /* ----- NAVIGATION EVENT (SharedFlow for one-time events) ----- */
-    private val _navigationEvent = MutableSharedFlow<ExpenseNavigationEvent>()
-    val navigationEvent: SharedFlow<ExpenseNavigationEvent> = _navigationEvent.asSharedFlow()
-
     /* ----- LIST EXPENSE (READ) ----- */
     private val _expenses = MutableStateFlow<List<Expense>>(emptyList())
     val expenses: StateFlow<List<Expense>> = _expenses
@@ -59,23 +49,38 @@ class ExpenseViewModel(
     private val _detailState = MutableStateFlow<ExpenseDetailState>(ExpenseDetailState.Idle)
     val detailState: StateFlow<ExpenseDetailState> = _detailState
 
-    init {
-        // Fetch expenses when ViewModel is created
-        fetchExpenses()
-    }
+    /* ----- LOADING STATE ----- */
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading
+
+    private var hasLoadedOnce = false  // Track if initial load happened
+
+    // ✅ PERBAIKAN: TIDAK auto-fetch di init
+    // Fetch akan dipanggil dari LaunchedEffect di Composable
+    // setelah Supabase session benar-benar ready
 
     /* ================= FETCH EXPENSES (READ) ================= */
 
     fun fetchExpenses() {
+        // ✅ Prevent multiple simultaneous fetches
+        if (_isLoading.value) return
+        
         viewModelScope.launch {
+            _isLoading.value = true
             try {
                 val fetchedExpenses = repository.fetchExpenses()
                 _expenses.value = fetchedExpenses
+                hasLoadedOnce = true
                 _uiState.value = ExpenseUiState.Idle
             } catch (e: Exception) {
-                _uiState.value = ExpenseUiState.Error(
-                    e.message ?: "Failed to fetch expenses"
-                )
+                // Only set error if this is initial load
+                if (!hasLoadedOnce) {
+                    _uiState.value = ExpenseUiState.Error(
+                        e.message ?: "Failed to fetch expenses"
+                    )
+                }
+            } finally {
+                _isLoading.value = false
             }
         }
     }
@@ -113,14 +118,12 @@ class ExpenseViewModel(
                     imageUrl = imageUrl
                 )
 
+
                 // Refresh the list
                 fetchExpenses()
 
-                // IMPORTANT: Emit navigation event ONCE (not via state)
-                _navigationEvent.emit(ExpenseNavigationEvent.NavigateBack)
-                
-                // Reset to Idle (not Success - no recomposition trigger)
-                _uiState.value = ExpenseUiState.Idle
+                // Set Success state for navigation
+                _uiState.value = ExpenseUiState.Success
 
             } catch (e: Exception) {
                 _uiState.value = ExpenseUiState.Error(
