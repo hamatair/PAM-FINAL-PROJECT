@@ -78,4 +78,28 @@ object FileUtils {
             false
         }
     }
+
+    /**
+     * Convert Uri to File for uploading
+     * This creates a temporary file from the Uri
+     */
+    suspend fun getFileFromUri(context: Context, uri: android.net.Uri): java.io.File? {
+        return try {
+            withContext(Dispatchers.IO) {
+                // Create temp file
+                val inputStream = context.contentResolver.openInputStream(uri) ?: return@withContext null
+                val tempFile = java.io.File(context.cacheDir, "temp_${System.currentTimeMillis()}.jpg")
+                
+                tempFile.outputStream().use { output ->
+                    inputStream.copyTo(output)
+                }
+                inputStream.close()
+                
+                tempFile
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
 }

@@ -1,0 +1,269 @@
+Index: app/src/main/java/com/example/pam_1/utils/FileUtils.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>// File: com.example.pam_1.utils/FileUtils.kt\r\n\r\npackage com.example.pam_1.utils\r\n\r\nimport android.content.ContentValues\r\nimport android.content.Context\r\nimport android.os.Build\r\nimport android.os.Environment\r\nimport android.provider.MediaStore\r\nimport kotlinx.coroutines.Dispatchers\r\nimport kotlinx.coroutines.withContext\r\nimport java.net.URL\r\nimport java.util.UUID\r\n\r\nobject FileUtils {\r\n\r\n    // ✅ UBAH MENJADI suspend fun (operasi jaringan harus di background thread)\r\n    // ✅ Tambahkan parameter 'mimeType' untuk fleksibilitas\r\n    suspend fun downloadImage(context: Context, url: String, mimeType: String = \"image/jpeg\"): Boolean {\r\n        // Tentukan ekstensi file berdasarkan mimeType\r\n        val extension = when {\r\n            mimeType.contains(\"png\") -> \".png\"\r\n            // Tambahkan logika lain jika perlu (e.g. gif, webp)\r\n            else -> \".jpg\" // Default ke JPG\r\n        }\r\n\r\n        // Buat nama file unik\r\n        val fileName = \"profile_${UUID.randomUUID()}$extension\"\r\n\r\n        // --- 1. Ambil bytes dari URL (harus di Dispatchers.IO) ---\r\n        val bytes = try {\r\n            withContext(Dispatchers.IO) {\r\n                // Hapus query parameter cache busting sebelum membaca bytes\r\n                val cleanUrl = url.substringBefore('?')\r\n                URL(cleanUrl).readBytes()\r\n            }\r\n        } catch (e: Exception) {\r\n            e.printStackTrace()\r\n            return false\r\n        }\r\n\r\n        // --- 2. Simpan ke MediaStore ---\r\n        return try {\r\n            val contentValues = ContentValues().apply {\r\n                put(MediaStore.Images.Media.DISPLAY_NAME, fileName)\r\n                // ✅ PERBAIKI: MIME Type harus spesifik, bukan gabungan\r\n                put(MediaStore.Images.Media.MIME_TYPE, mimeType)\r\n\r\n                // ✅ TENTUKAN LOKASI: Simpan di folder Pictures/NamaApp\r\n                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {\r\n                    put(MediaStore.Images.Media.RELATIVE_PATH, \"${Environment.DIRECTORY_PICTURES}/PAM_ProfileApp\")\r\n                    put(MediaStore.Images.Media.IS_PENDING, 1)\r\n                }\r\n            }\r\n\r\n            val uri = context.contentResolver.insert(\r\n                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,\r\n                contentValues\r\n            ) ?: return false\r\n\r\n            // Tulis bytes ke OutputStream (harus di Dispatchers.IO)\r\n            withContext(Dispatchers.IO) {\r\n                context.contentResolver.openOutputStream(uri)?.use { output ->\r\n                    output.write(bytes)\r\n                }\r\n            }\r\n\r\n            // Finalisasi (hapus status pending)\r\n            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {\r\n                contentValues.clear()\r\n                contentValues.put(MediaStore.Images.Media.IS_PENDING, 0)\r\n                context.contentResolver.update(uri, contentValues, null, null)\r\n            }\r\n\r\n            true\r\n        } catch (e: Exception) {\r\n            e.printStackTrace()\r\n            false\r\n        }\r\n    }\r\n}
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/example/pam_1/utils/FileUtils.kt b/app/src/main/java/com/example/pam_1/utils/FileUtils.kt
+--- a/app/src/main/java/com/example/pam_1/utils/FileUtils.kt	(revision a5b369bbec7f24e004f0d22392777de0158d7625)
++++ b/app/src/main/java/com/example/pam_1/utils/FileUtils.kt	(date 1765703945071)
+@@ -78,4 +78,28 @@
+             false
+         }
+     }
+-}
+\ No newline at end of file
++
++    /**
++     * Convert Uri to File for uploading
++     * This creates a temporary file from the Uri
++     */
++    suspend fun getFileFromUri(context: Context, uri: android.net.Uri): java.io.File? {
++        return try {
++            withContext(Dispatchers.IO) {
++                // Create temp file
++                val inputStream = context.contentResolver.openInputStream(uri) ?: return@withContext null
++                val tempFile = java.io.File(context.cacheDir, "temp_${System.currentTimeMillis()}.jpg")
++                
++                tempFile.outputStream().use { output ->
++                    inputStream.copyTo(output)
++                }
++                inputStream.close()
++                
++                tempFile
++            }
++        } catch (e: Exception) {
++            e.printStackTrace()
++            null
++        }
++    }
++}
+Index: app/src/main/java/com/example/pam_1/viewmodel/ExpenseViewModel.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/example/pam_1/viewmodel/ExpenseViewModel.kt b/app/src/main/java/com/example/pam_1/viewmodel/ExpenseViewModel.kt
+new file mode 100644
+--- /dev/null	(date 1765713483093)
++++ b/app/src/main/java/com/example/pam_1/viewmodel/ExpenseViewModel.kt	(date 1765713483093)
+@@ -0,0 +1,177 @@
++package com.example.pam_1.viewmodel
++
++import android.net.Uri
++import androidx.lifecycle.ViewModel
++import androidx.lifecycle.viewModelScope
++import com.example.pam_1.data.model.Expense
++import com.example.pam_1.data.repository.ExpenseRepository
++import kotlinx.coroutines.flow.MutableSharedFlow
++import kotlinx.coroutines.flow.MutableStateFlow
++import kotlinx.coroutines.flow.SharedFlow
++import kotlinx.coroutines.flow.StateFlow
++import kotlinx.coroutines.flow.asSharedFlow
++import kotlinx.coroutines.launch
++
++/* ================= UI STATE ================= */
++
++sealed class ExpenseUiState {
++    object Idle : ExpenseUiState()
++    object Loading : ExpenseUiState()
++    data class Error(val message: String) : ExpenseUiState()
++    // REMOVED: Success - moved to navigation event
++}
++
++/* ================= NAVIGATION EVENT ================= */
++
++sealed class ExpenseNavigationEvent {
++    object NavigateBack : ExpenseNavigationEvent()
++}
++
++/* ================= DETAIL STATE ================= */
++
++sealed class ExpenseDetailState {
++    object Idle : ExpenseDetailState()
++    object Loading : ExpenseDetailState()
++    data class Success(val expense: Expense) : ExpenseDetailState()
++    data class Error(val message: String) : ExpenseDetailState()
++    object NotFound : ExpenseDetailState()
++}
++
++/* ================= VIEWMODEL ================= */
++
++class ExpenseViewModel(
++    private val repository: ExpenseRepository
++) : ViewModel() {
++
++    /* ----- UI STATE ----- */
++    private val _uiState = MutableStateFlow<ExpenseUiState>(ExpenseUiState.Idle)
++    val uiState: StateFlow<ExpenseUiState> = _uiState
++
++    /* ----- NAVIGATION EVENT (SharedFlow for one-time events) ----- */
++    private val _navigationEvent = MutableSharedFlow<ExpenseNavigationEvent>()
++    val navigationEvent: SharedFlow<ExpenseNavigationEvent> = _navigationEvent.asSharedFlow()
++
++    /* ----- LIST EXPENSE (READ) ----- */
++    private val _expenses = MutableStateFlow<List<Expense>>(emptyList())
++    val expenses: StateFlow<List<Expense>> = _expenses
++
++    /* ----- DETAIL STATE ----- */
++    private val _detailState = MutableStateFlow<ExpenseDetailState>(ExpenseDetailState.Idle)
++    val detailState: StateFlow<ExpenseDetailState> = _detailState
++
++    init {
++        // Fetch expenses when ViewModel is created
++        fetchExpenses()
++    }
++
++    /* ================= FETCH EXPENSES (READ) ================= */
++
++    fun fetchExpenses() {
++        viewModelScope.launch {
++            try {
++                val fetchedExpenses = repository.fetchExpenses()
++                _expenses.value = fetchedExpenses
++                _uiState.value = ExpenseUiState.Idle
++            } catch (e: Exception) {
++                _uiState.value = ExpenseUiState.Error(
++                    e.message ?: "Failed to fetch expenses"
++                )
++            }
++        }
++    }
++
++    /* ================= ADD EXPENSE ================= */
++
++    fun addExpense(
++        context: android.content.Context,
++        title: String,
++        amount: Long,
++        category: String,
++        imageUri: Uri?
++    ) {
++        viewModelScope.launch {
++            _uiState.value = ExpenseUiState.Loading
++
++            try {
++                // Upload image if exists
++                var imageUrl: String? = null
++                if (imageUri != null) {
++                    // Convert Uri to File
++                    val file = com.example.pam_1.utils.FileUtils.getFileFromUri(context, imageUri)
++                    if (file != null) {
++                        imageUrl = repository.uploadExpenseImage(file)
++                        // Clean up temp file
++                        file.delete()
++                    }
++                }
++
++                // Add expense to database
++                repository.addExpense(
++                    title = title,
++                    amount = amount,
++                    category = category,
++                    imageUrl = imageUrl
++                )
++
++                // Refresh the list
++                fetchExpenses()
++
++                // IMPORTANT: Emit navigation event ONCE (not via state)
++                _navigationEvent.emit(ExpenseNavigationEvent.NavigateBack)
++                
++                // Reset to Idle (not Success - no recomposition trigger)
++                _uiState.value = ExpenseUiState.Idle
++
++            } catch (e: Exception) {
++                _uiState.value = ExpenseUiState.Error(
++                    e.message ?: "Failed to add expense"
++                )
++            }
++        }
++    }
++
++    /* ================= DELETE EXPENSE ================= */
++
++    fun deleteExpense(expenseId: Int) {
++        viewModelScope.launch {
++            try {
++                repository.deleteExpense(expenseId)
++                fetchExpenses() // Refresh list
++            } catch (e: Exception) {
++                _uiState.value = ExpenseUiState.Error(
++                    e.message ?: "Failed to delete expense"
++                )
++            }
++        }
++    }
++
++    /* ================= GET EXPENSE DETAIL ================= */
++
++    fun getExpenseDetail(expenseId: Int) {
++        viewModelScope.launch {
++            _detailState.value = ExpenseDetailState.Loading
++            try {
++                val expense = repository.getExpenseById(expenseId)
++                _detailState.value = if (expense != null) {
++                    ExpenseDetailState.Success(expense)
++                } else {
++                    ExpenseDetailState.NotFound
++                }
++            } catch (e: Exception) {
++                _detailState.value = ExpenseDetailState.Error(
++                    e.message ?: "Failed to fetch expense detail"
++                )
++            }
++        }
++    }
++
++    /* ================= RESET UI STATE ================= */
++
++    fun resetUiState() {
++        _uiState.value = ExpenseUiState.Idle
++    }
++
++    fun resetDetailState() {
++        _detailState.value = ExpenseDetailState.Idle
++    }
++}
+Index: app/src/main/java/com/example/pam_1/data/model/Expense.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/example/pam_1/data/model/Expense.kt b/app/src/main/java/com/example/pam_1/data/model/Expense.kt
+new file mode 100644
+--- /dev/null	(date 1765705814943)
++++ b/app/src/main/java/com/example/pam_1/data/model/Expense.kt	(date 1765705814943)
+@@ -0,0 +1,31 @@
++package com.example.pam_1.data.model
++
++import kotlinx.serialization.SerialName
++import kotlinx.serialization.Serializable
++
++@Serializable
++data class Expense(
++    @SerialName("id")
++    val id: Int? = null,
++
++    @SerialName("user_id")
++    val userId: String,
++
++    @SerialName("title")
++    val title: String,
++
++    @SerialName("category")
++    val category: String,
++
++    @SerialName("image_url")
++    val imageUrl: String? = null,
++
++    @SerialName("amount")
++    val amount: Long,
++
++    @SerialName("expense_date")
++    val expenseDate: String,
++
++    @SerialName("created_at")
++    val createdAt: String? = null
++)
