@@ -19,7 +19,6 @@ import com.example.pam_1.viewmodel.AuthViewModel
 // PENTING: Import Extension Functions
 import com.example.pam_1.navigations.navigateSafe
 
-
 @Composable
 fun NewPasswordScreen(navController: NavController, viewModel: AuthViewModel) {
     var newPassword by remember { mutableStateOf("") }
@@ -33,7 +32,7 @@ fun NewPasswordScreen(navController: NavController, viewModel: AuthViewModel) {
     LaunchedEffect(uiState) {
         when (uiState) {
             is AuthUIState.Success -> {
-                Toast.makeText(context, "Password berhasil diubah. Silakan Login.", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, "Kata Sandi berhasil diubah. Silakan Masuk.", Toast.LENGTH_LONG).show()
 
                 // --- PERBAIKAN: Gunakan navigateSafe dengan popUpTo ---
                 navController.navigateSafe("login") {
@@ -58,42 +57,42 @@ fun NewPasswordScreen(navController: NavController, viewModel: AuthViewModel) {
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "Atur Password Baru",
+            text = "Atur Kata Sandi Baru",
             style = MaterialTheme.typography.headlineMedium
         )
         Text(
-            text = "Masukkan password baru Anda.",
+            text = "Masukkan kata sandi baru Anda.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(32.dp))
 
-        // New Password
+        // Kata Sandi Baru
         PasswordTextFieldToggle(
             value = newPassword,
             onValueChange = {
                 newPassword = it
                 passwordError = false
             },
-            label = "Password Baru",
+            label = "Kata Sandi Baru",
             isError = passwordError,
             supportingText = {
-                if (passwordError) Text("Min 8 char, ada Huruf Besar, Kecil, & Angka")
+                if (passwordError) Text("Min 8 karakter, mengandung Huruf Besar, Kecil, & Angka")
             }
         )
         Spacer(Modifier.height(16.dp))
 
-        // Confirm Password
+        // Konfirmasi Kata Sandi
         PasswordTextFieldToggle(
             value = confirmPassword,
             onValueChange = {
                 confirmPassword = it
                 confirmError = false
             },
-            label = "Konfirmasi Password",
+            label = "Konfirmasi Kata Sandi",
             isError = confirmError,
             supportingText = {
-                if (confirmError) Text("Konfirmasi password tidak cocok")
+                if (confirmError) Text("Konfirmasi kata sandi tidak cocok")
             }
         )
         Spacer(Modifier.height(32.dp))
@@ -104,12 +103,12 @@ fun NewPasswordScreen(navController: NavController, viewModel: AuthViewModel) {
             Button(
                 onClick = {
                     var isValid = true
-                    // 1. Validasi format password (Asumsi fungsi isValidPassword tersedia/diimport)
+                    // 1. Validasi format kata sandi
                     if (!isValidPassword(newPassword)) {
                         passwordError = true
                         isValid = false
                     }
-                    // 2. Validasi kecocokan password
+                    // 2. Validasi kecocokan kata sandi
                     if (newPassword != confirmPassword) {
                         confirmError = true
                         isValid = false
@@ -118,21 +117,21 @@ fun NewPasswordScreen(navController: NavController, viewModel: AuthViewModel) {
                     if (isValid) {
                         viewModel.updatePassword(newPassword)
                     } else {
-                        Toast.makeText(context, "Periksa kembali input password Anda.", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Periksa kembali input kata sandi Anda.", Toast.LENGTH_SHORT).show()
                     }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp)
             ) {
-                Text("Ubah Password")
+                Text("Ubah Kata Sandi")
             }
         }
     }
 }
 
 /**
- * Composable kustom untuk OutlinedTextField dengan toggle visibilitas password.
+ * Composable kustom untuk OutlinedTextField dengan toggle visibilitas kata sandi.
  */
 @Composable
 fun PasswordTextFieldToggle(
@@ -146,7 +145,7 @@ fun PasswordTextFieldToggle(
 
     val visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation()
     val icon = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
-    val description = if (passwordVisible) "Hide password" else "Show password"
+    val description = if (passwordVisible) "Sembunyikan kata sandi" else "Tampilkan kata sandi"
 
     OutlinedTextField(
         value = value,

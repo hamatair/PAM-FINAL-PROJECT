@@ -1,5 +1,6 @@
 package com.example.pam_1.viewmodel
 
+import android.content.Context
 import android.net.Uri
 import android.util.Log
 import androidx.compose.runtime.mutableStateListOf
@@ -12,30 +13,65 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.example.pam_1.data.model.repository.ImageRepository
 
 class TugasViewModel(private val repository: TugasRepository) : ViewModel() {
 
     private val _tugasList = mutableStateListOf<Tugas>()
+    private val imageRepository = ImageRepository()
 
     // Format Tanggal
-    private val uiDateFormat = SimpleDateFormat("dd MMMM yyyy", Locale("id", "ID"))
-    private val dbDateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+    private val uiFormat = SimpleDateFormat("dd MMMM yyyy", Locale("id", "ID"))
+    private val dbFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
 
-    var selectedDate = mutableStateOf(getCurrentDateUi())
-    var filterType = mutableStateOf("To Do")
+    // DB date (untuk filter & query) -> default hari ini
+    var selectedDateDb = mutableStateOf(getTodayDb())
+
+    // UI date (hanya untuk tampilan)
+    var selectedDateUi = mutableStateOf(formatDbToUi(selectedDateDb.value))
+
+    // Filter default: Bahasa Indonesia sesuai FilterTabs
+    var filterType = mutableStateOf("Belum Selesai")
     var errorMessage = mutableStateOf<String?>(null)
 
     init {
         loadTugas()
     }
 
+    private fun getTodayDb(): String =
+        dbFormat.format(Date())
+
+    fun formatDbToUi(dbDate: String): String {
+        return try {
+            val d = dbFormat.parse(dbDate)
+            if (d != null) uiFormat.format(d) else dbDate
+        } catch (e: Exception) {
+            Log.w("TugasViewModel", "formatDbToUi parse gagal for '$dbDate': ${e.message}")
+            dbDate
+        }
+    }
+
+    fun convertUiToDb(uiDate: String): String {
+        return try {
+            val d = uiFormat.parse(uiDate)
+            if (d != null) dbFormat.format(d) else uiDate
+        } catch (e: Exception) {
+            Log.w("TugasViewModel", "convertUiToDb parse gagal for '$uiDate': ${e.message}")
+            uiDate
+        }
+    }
+
     val filteredTugasList: List<Tugas>
         get() {
-            val selectedDateInDbFormat = convertUiDateToDb(selectedDate.value)
+            Log.d("TugasViewModel", "Filtering for DB date = ${selectedDateDb.value}, filterType = '${filterType.value}'")
             return _tugasList
-                .filter { it.deadline == selectedDateInDbFormat }
+                .filter { it.deadline == selectedDateDb.value }
                 .filter {
-                    if (filterType.value == "To Do") !it.isCompleted else it.isCompleted
+                    when (filterType.value) {
+                        "Belum Selesai" -> !it.isCompleted
+                        "Selesai" -> it.isCompleted
+                        else -> true
+                    }
                 }
                 .sortedByDescending {
                     when (it.priority) {
@@ -53,6 +89,7 @@ class TugasViewModel(private val repository: TugasRepository) : ViewModel() {
                 val result = repository.getTugas()
                 _tugasList.clear()
                 _tugasList.addAll(result)
+                Log.d("TugasViewModel", "Loaded ${result.size} tugas")
             } catch (e: Exception) {
                 Log.e("TugasViewModel", "Error loading tugas: ${e.message}")
                 e.printStackTrace()
@@ -60,16 +97,22 @@ class TugasViewModel(private val repository: TugasRepository) : ViewModel() {
         }
     }
 
-    fun addTugas(title: String, desc: String, deadlineUi: String, time: String, priority: String, imageUri: Uri?) {
+    fun addTugas(
+        context: Context,
+        title: String,
+        desc: String,
+        deadlineUi: String,
+        time: String,
+        priority: String,
+        imageUri: Uri?
+    ) {
         viewModelScope.launch {
             try {
-                // DEBUGGING: Cek tanggal apa yang sebenarnya dikirim ke DB
-                val deadlineDb = convertUiDateToDb(deadlineUi)
-                Log.d("DEBUG_DATE", "UI Date: $deadlineUi -> DB Date: $deadlineDb")
+                val deadlineDb = convertUiToDb(deadlineUi)
 
-                // Validasi format tanggal sebelum kirim (Pencegahan Error A)
-                if (!deadlineDb.matches(Regex("\\d{4}-\\d{2}-\\d{2}"))) {
-                    throw Exception("Format tanggal salah: $deadlineDb. Harusnya yyyy-MM-dd")
+                // 🔥 UPLOAD IMAGE JIKA ADA
+                val uploadedImageUrl = imageUri?.let {
+                    imageRepository.uploadTugasImage(context, it)
                 }
 
                 val newTugas = Tugas(
@@ -78,21 +121,14 @@ class TugasViewModel(private val repository: TugasRepository) : ViewModel() {
                     deadline = deadlineDb,
                     time = time,
                     priority = priority,
-                    imageUri = imageUri?.toString()
+                    imageUri = uploadedImageUrl
                 )
 
                 repository.createTugas(newTugas)
-
-                Log.d("TugasViewModel", "Berhasil input data!")
                 loadTugas()
-                selectedDate.value = deadlineUi
 
             } catch (e: Exception) {
-                // PENTING: Log error aslinya agar terbaca di Logcat
-                Log.e("TugasViewModel", "GAGAL INPUT TUGAS: ${e.message}", e)
-
-                // Opsional: Set pesan error ke variable agar bisa ditToast di UI
-                errorMessage.value = "Gagal simpan: ${e.message}"
+                errorMessage.value = e.message
             }
         }
     }
@@ -100,7 +136,7 @@ class TugasViewModel(private val repository: TugasRepository) : ViewModel() {
     fun updateTugas(id: String, newTitle: String, newDesc: String, newDeadlineUi: String, newTime: String, newPriority: String, newImageUri: Uri?) {
         viewModelScope.launch {
             try {
-                val deadlineDb = convertUiDateToDb(newDeadlineUi)
+                val deadlineDb = convertUiToDb(newDeadlineUi)
                 val oldTugas = _tugasList.find { it.id == id }
 
                 val updatedTugas = oldTugas?.copy(
@@ -115,7 +151,8 @@ class TugasViewModel(private val repository: TugasRepository) : ViewModel() {
                 if (updatedTugas != null) {
                     repository.updateTugas(updatedTugas)
                     loadTugas()
-                    selectedDate.value = newDeadlineUi
+                    selectedDateDb.value = deadlineDb
+                    selectedDateUi.value = formatDbToUi(deadlineDb)
                 }
             } catch (e: Exception) {
                 Log.e("TugasViewModel", "Error updating tugas: ${e.message}")
@@ -128,18 +165,14 @@ class TugasViewModel(private val repository: TugasRepository) : ViewModel() {
         viewModelScope.launch {
             try {
                 val newStatus = !tugas.isCompleted
-                // Update UI optimistik (langsung berubah sebelum server respon)
                 val index = _tugasList.indexOf(tugas)
                 if (index != -1) {
                     _tugasList[index] = tugas.copy(isCompleted = newStatus)
                 }
-
-                // Update ke DB
                 tugas.id?.let { repository.updateStatus(it, newStatus) }
-                // Opsional: loadTugas() lagi untuk memastikan sinkron
             } catch (e: Exception) {
                 Log.e("TugasViewModel", "Error toggle status: ${e.message}")
-                loadTugas() // Revert jika gagal
+                loadTugas()
             }
         }
     }
@@ -152,19 +185,6 @@ class TugasViewModel(private val repository: TugasRepository) : ViewModel() {
             } catch (e: Exception) {
                 Log.e("TugasViewModel", "Error deleting tugas: ${e.message}")
             }
-        }
-    }
-
-    private fun getCurrentDateUi(): String {
-        return uiDateFormat.format(Date())
-    }
-
-    private fun convertUiDateToDb(uiDate: String): String {
-        return try {
-            val date = uiDateFormat.parse(uiDate)
-            dbDateFormat.format(date ?: Date())
-        } catch (e: Exception) {
-            uiDate // Return as is if parse fails
         }
     }
 }

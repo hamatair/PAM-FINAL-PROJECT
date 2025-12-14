@@ -48,11 +48,11 @@ fun ForgotPasswordScreen(navController: NavController, viewModel: AuthViewModel)
     ) {
         Spacer(Modifier.height(64.dp))
         Text(
-            text = "Lupa Password?",
+            text = "Lupa Kata Sandi?",
             style = MaterialTheme.typography.headlineMedium
         )
         Text(
-            text = "Masukkan email kamu untuk mendapatkan kode reset password.",
+            text = "Masukkan email kamu untuk mendapatkan kode reset kata sandi.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -102,7 +102,7 @@ fun ForgotPasswordScreen(navController: NavController, viewModel: AuthViewModel)
             },
             modifier = Modifier.align(Alignment.CenterHorizontally)
         ) {
-            Text("Kembali ke Login")
+            Text("Kembali ke Masuk")
         }
     }
 }

@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
@@ -66,7 +65,7 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.pam_1.data.SupabaseClient
 import com.example.pam_1.data.model.GroupMessage
-import com.example.pam_1.ui.components.MessageBubble
+import com.example.pam_1.ui.common.MessageBubble
 import com.example.pam_1.utils.ChatDateTimeFormatter
 import com.example.pam_1.viewmodel.ChatUIState
 import com.example.pam_1.viewmodel.GroupChatViewModel

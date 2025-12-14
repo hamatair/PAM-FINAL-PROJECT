@@ -17,6 +17,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.pam_1.viewmodel.AuthUIState
 import com.example.pam_1.viewmodel.AuthViewModel
@@ -25,14 +26,16 @@ import com.example.pam_1.viewmodel.AuthViewModel
 import com.example.pam_1.navigations.navigateSafe
 import com.example.pam_1.navigations.popBackStackSafe
 
-// Fungsi Validasi Password
+// Fungsi Validasi Kata Sandi
 fun isValidPassword(password: String): Boolean {
+    // Pola: Minimal 8 karakter, harus ada angka, huruf kecil, dan huruf besar.
     val passwordPattern = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z]).{8,}$"
     return password.matches(passwordPattern.toRegex())
 }
 
 // Fungsi Validasi Email Gmail
 fun isValidGmail(email: String): Boolean {
+    // Memeriksa apakah email diakhiri dengan "@gmail.com"
     return email.endsWith("@gmail.com")
 }
 
@@ -45,14 +48,14 @@ fun RegisterScreen(navController: NavController, viewModel: AuthViewModel) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
-    // State untuk Error Handling (Validasi UI)
+    // State untuk Penanganan Error (Validasi UI)
     var firstNameError by remember { mutableStateOf(false) }
     var lastNameError by remember { mutableStateOf(false) }
     var usernameError by remember { mutableStateOf(false) }
     var emailError by remember { mutableStateOf(false) }
     var passwordError by remember { mutableStateOf(false) }
 
-    // State BARU untuk visibilitas password
+    // State BARU untuk visibilitas kata sandi
     var passwordVisible by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
@@ -80,7 +83,7 @@ fun RegisterScreen(navController: NavController, viewModel: AuthViewModel) {
     // Tentukan VisualTransformation dan ikon berdasarkan state passwordVisible
     val visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation()
     val icon = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
-    val description = if (passwordVisible) "Hide password" else "Show password"
+    val description = if (passwordVisible) "Sembunyikan kata sandi" else "Tampilkan kata sandi"
 
     Column(
         modifier = Modifier
@@ -93,62 +96,88 @@ fun RegisterScreen(navController: NavController, viewModel: AuthViewModel) {
 
         // Header
         Text(
-            text = "Sign up",
+            text = "Daftar",
             style = MaterialTheme.typography.headlineLarge
         )
         Text(
-            text = "Lets create new account",
+            text = "Mari buat akun baru",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
         Spacer(Modifier.height(32.dp))
 
-        // First Name & Last Name (Side by Side)
+        // First Name & Last Name (Bersebelahan)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // First Name
+            // Nama Depan
             OutlinedTextField(
                 value = firstName,
                 onValueChange = {
                     firstName = it
                     firstNameError = false
                 },
-                label = { Text("First name") },
+                label = {
+                    Text(
+                        "Nama Depan",
+                        fontSize = 12.sp
+                    )
+                },
+                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                    fontSize = 14.sp
+                ),
                 modifier = Modifier.weight(1f),
                 isError = firstNameError,
                 singleLine = true
             )
 
-            // Last Name
+            // Nama Belakang
             OutlinedTextField(
                 value = lastName,
                 onValueChange = {
                     lastName = it
                     lastNameError = false
                 },
-                label = { Text("Last name") },
+                label = {
+                    Text(
+                        "Nama Belakang",
+                        fontSize = 12.sp
+                    )
+                },
+                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                    fontSize = 14.sp
+                ),
                 modifier = Modifier.weight(1f),
                 isError = lastNameError,
                 singleLine = true
             )
+
         }
         Spacer(Modifier.height(16.dp))
 
-        // Username
+        // Nama Pengguna (Username)
         OutlinedTextField(
             value = username,
             onValueChange = {
                 username = it
                 usernameError = false
             },
-            label = { Text("Username") },
+            label = {
+                Text(
+                    "Nama Pengguna",
+                    fontSize = 12.sp
+                )
+            },
+            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                fontSize = 14.sp
+            ),
             modifier = Modifier.fillMaxWidth(),
             isError = usernameError,
             singleLine = true
         )
+
         Spacer(Modifier.height(16.dp))
 
         // Email
@@ -158,48 +187,73 @@ fun RegisterScreen(navController: NavController, viewModel: AuthViewModel) {
                 email = it
                 emailError = false
             },
-            label = { Text("Email") },
+            label = {
+                Text(
+                    text = "Email",
+                    fontSize = 12.sp
+                )
+            },
+            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                fontSize = 14.sp
+            ),
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             isError = emailError,
             supportingText = {
-                if (emailError) Text(
-                    text = "Email harus menggunakan domain @gmail.com",
-                    color = MaterialTheme.colorScheme.error
-                )
+                if (emailError) {
+                    Text(
+                        text = "Email harus menggunakan domain @gmail.com",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
             },
             singleLine = true
         )
         Spacer(Modifier.height(2.dp))
 
-        // Password dengan Ikon Toggle
+        // Kata Sandi dengan Ikon Toggle
         OutlinedTextField(
             value = password,
             onValueChange = {
                 password = it
                 passwordError = false
             },
-            label = { Text("Password") },
-            visualTransformation = visualTransformation, // Menggunakan visualTransformation yang dinamis
+            label = {
+                Text(
+                    text = "Kata Sandi",
+                    fontSize = 12.sp
+                )
+            },
+            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                fontSize = 14.sp
+            ),
+            visualTransformation = visualTransformation,
             trailingIcon = {
-                // IconButton untuk mengubah state passwordVisible
                 IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                    Icon(imageVector = icon, contentDescription = description)
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = description
+                    )
                 }
             },
             modifier = Modifier.fillMaxWidth(),
             isError = passwordError,
             supportingText = {
-                if (passwordError) Text(
-                    text = "Min 8 char, ada Huruf Besar, Kecil, & Angka",
-                    color = MaterialTheme.colorScheme.error
-                )
+                if (passwordError) {
+                    Text(
+                        text = "Minimal 8 karakter, mengandung Huruf Besar, Huruf Kecil, & Angka",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
             },
             singleLine = true
         )
+
         Spacer(Modifier.height(24.dp))
 
-        // Registration Button
+        // Tombol Pendaftaran
         if (uiState is AuthUIState.Loading) {
             Box(
                 modifier = Modifier.fillMaxWidth(),
@@ -213,19 +267,19 @@ fun RegisterScreen(navController: NavController, viewModel: AuthViewModel) {
                     // LOGIKA VALIDASI SEBELUM KIRIM KE VIEWMODEL
                     var isValid = true
 
-                    // Cek First Name
+                    // Cek Nama Depan
                     if (firstName.isBlank()) {
                         firstNameError = true
                         isValid = false
                     }
 
-                    // Cek Last Name
+                    // Cek Nama Belakang
                     if (lastName.isBlank()) {
                         lastNameError = true
                         isValid = false
                     }
 
-                    // Cek Username
+                    // Cek Nama Pengguna
                     if (username.isBlank()) {
                         usernameError = true
                         isValid = false
@@ -240,7 +294,7 @@ fun RegisterScreen(navController: NavController, viewModel: AuthViewModel) {
                         isValid = false
                     }
 
-                    // Cek Password
+                    // Cek Kata Sandi
                     if (password.isBlank()) {
                         passwordError = true
                         isValid = false
@@ -253,7 +307,7 @@ fun RegisterScreen(navController: NavController, viewModel: AuthViewModel) {
                     if (isValid) {
                         // Gabungkan firstName dan lastName menjadi full_name
                         val full_name = "$firstName $lastName"
-                        // Phone number kosong karena tidak ada di form
+                        // Nomor telepon kosong karena tidak ada di formulir
                         val phone_number = null
 
                         // Kirim data dengan urutan: email, password, username, full_name, phone_number
@@ -271,7 +325,7 @@ fun RegisterScreen(navController: NavController, viewModel: AuthViewModel) {
                     .height(56.dp),
                 shape = MaterialTheme.shapes.medium
             ) {
-                Text("Registration")
+                Text("Daftar")
             }
         }
 
@@ -282,7 +336,7 @@ fun RegisterScreen(navController: NavController, viewModel: AuthViewModel) {
             horizontalArrangement = Arrangement.Center
         ) {
             Text(
-                text = "Already have account?",
+                text = "Sudah punya akun?",
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.alignByBaseline()
             )
@@ -293,7 +347,7 @@ fun RegisterScreen(navController: NavController, viewModel: AuthViewModel) {
                 contentPadding = PaddingValues(0.dp),
                 modifier = Modifier.alignByBaseline()
             ) {
-                Text("Sign in")
+                Text("Masuk")
             }
         }
     }

@@ -48,15 +48,12 @@ fun TugasScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
-    // Form Input States
+    // State Form
     var idEditing by remember { mutableStateOf<String?>(null) }
     var titleInput by remember { mutableStateOf("") }
     var descInput by remember { mutableStateOf("") }
-
-    var deadlineInput by remember { mutableStateOf(viewModel.selectedDate.value) }
+    var deadlineInput by remember { mutableStateOf(viewModel.selectedDateUi.value) }
     var timeInput by remember { mutableStateOf("09:00") }
-
-    // GANTI DEFAULT KE "Sedang"
     var priorityInput by remember { mutableStateOf("Sedang") }
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
 
@@ -82,9 +79,9 @@ fun TugasScreen(
         idEditing = null
         titleInput = ""
         descInput = ""
-        deadlineInput = viewModel.selectedDate.value
+        deadlineInput = viewModel.selectedDateUi.value
         timeInput = "09:00"
-        priorityInput = "Sedang" // Default Reset
+        priorityInput = "Sedang"
         selectedImageUri = null
     }
 
@@ -92,21 +89,21 @@ fun TugasScreen(
         idEditing = tugas.id
         titleInput = tugas.title
         descInput = tugas.description
-        deadlineInput = tugas.deadline
+        deadlineInput = viewModel.formatDbToUi(tugas.deadline)
         timeInput = tugas.time
         priorityInput = tugas.priority
         selectedImageUri = tugas.imageUri?.let { Uri.parse(it) }
         showBottomSheet = true
     }
 
+    LaunchedEffect(viewModel.errorMessage.value) {
+        viewModel.errorMessage.value?.let { msg ->
+            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+            viewModel.errorMessage.value = null
+        }
+    }
+
     Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text("Schedule", fontWeight = FontWeight.Bold) },
-                // FIX: Menggunakan topAppBarColors (versi baru)
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = BackgroundBeige)
-            )
-        },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
@@ -117,7 +114,7 @@ fun TugasScreen(
                 contentColor = Color.White,
                 shape = RoundedCornerShape(16.dp)
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Task")
+                Icon(Icons.Default.Add, contentDescription = "Tambah Tugas")
             }
         },
         containerColor = BackgroundBeige
@@ -128,13 +125,26 @@ fun TugasScreen(
                 .padding(paddingValues)
                 .padding(horizontal = 20.dp)
         ) {
+
             HorizontalCalendar(
-                selectedDate = viewModel.selectedDate.value,
-                onDateSelected = { viewModel.selectedDate.value = it }
+                selectedDate = viewModel.selectedDateUi.value,
+                onDateSelected = { uiDate ->
+                    val dbDate = viewModel.convertUiToDb(uiDate)
+                    viewModel.selectedDateDb.value = dbDate
+                    viewModel.selectedDateUi.value = uiDate
+                    deadlineInput = uiDate
+                }
             )
 
             Spacer(modifier = Modifier.height(16.dp))
-            Text("Schedule Today", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = TextBlack)
+
+            Text(
+                "Jadwal Hari Ini",
+                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp,
+                color = TextBlack
+            )
+
             Spacer(modifier = Modifier.height(16.dp))
 
             FilterTabs(
@@ -153,10 +163,12 @@ fun TugasScreen(
                 if (tasks.isEmpty()) {
                     item {
                         Box(
-                            modifier = Modifier.fillMaxWidth().padding(top = 50.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 50.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text("No tasks for this date", color = Color.Gray)
+                            Text("Tidak ada tugas pada tanggal ini", color = Color.Gray)
                         }
                     }
                 } else {
@@ -178,22 +190,31 @@ fun TugasScreen(
                 containerColor = Color.White
             ) {
                 Column(
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp).fillMaxWidth()
+                    modifier = Modifier
+                        .padding(horizontal = 20.dp, vertical = 20.dp)
+                        .fillMaxWidth()
                 ) {
                     Text(
-                        if (idEditing == null) "New Task" else "Edit Task",
-                        fontSize = 20.sp, fontWeight = FontWeight.Bold
+                        if (idEditing == null) "Tugas Baru" else "Edit Tugas",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
                     )
+
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    CampusInputField(titleInput, { titleInput = it }, "Title")
+                    CampusInputField(titleInput, { titleInput = it }, "Judul")
                     Spacer(modifier = Modifier.height(12.dp))
-                    CampusInputField(descInput, { descInput = it }, "Description")
+                    CampusInputField(descInput, { descInput = it }, "Deskripsi")
+
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    Text("Priority", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+                    Text(
+                        "Prioritas",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Gray
+                    )
 
-                    // FIX: Parameter sekarang cocok dengan PrioritySelector.kt di atas
                     PrioritySelector(
                         selectedPriority = priorityInput,
                         onPrioritySelected = { priorityInput = it }
@@ -213,20 +234,29 @@ fun TugasScreen(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     OutlinedButton(
-                        onClick = { photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                        onClick = {
+                            photoPickerLauncher.launch(
+                                PickVisualMediaRequest(
+                                    ActivityResultContracts.PickVisualMedia.ImageOnly
+                                )
+                            )
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Icon(Icons.Default.Image, null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(if (selectedImageUri != null) "Change Photo" else "Add Photo")
+                        Text(if (selectedImageUri != null) "Ganti Foto" else "Tambah Foto")
                     }
 
                     if (selectedImageUri != null) {
                         AsyncImage(
                             model = selectedImageUri,
                             contentDescription = null,
-                            modifier = Modifier.height(100.dp).fillMaxWidth().padding(top = 8.dp),
+                            modifier = Modifier
+                                .height(100.dp)
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
                             contentScale = androidx.compose.ui.layout.ContentScale.Crop
                         )
                     }
@@ -236,21 +266,45 @@ fun TugasScreen(
                     Button(
                         onClick = {
                             if (titleInput.isBlank()) {
-                                Toast.makeText(context, "Title cannot be empty", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(
+                                    context,
+                                    "Judul tidak boleh kosong",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                                 return@Button
                             }
+
                             if (idEditing == null) {
-                                viewModel.addTugas(titleInput, descInput, deadlineInput, timeInput, priorityInput, selectedImageUri)
+                                viewModel.addTugas(
+                                    context = context,
+                                    title = titleInput,
+                                    desc = descInput,
+                                    deadlineUi = deadlineInput,
+                                    time = timeInput,
+                                    priority = priorityInput,
+                                    imageUri = selectedImageUri
+                                )
                             } else {
-                                viewModel.updateTugas(idEditing!!, titleInput, descInput, deadlineInput, timeInput, priorityInput, selectedImageUri)
+                                viewModel.updateTugas(
+                                    idEditing!!,
+                                    titleInput,
+                                    descInput,
+                                    deadlineInput,
+                                    timeInput,
+                                    priorityInput,
+                                    selectedImageUri
+                                )
                             }
+
                             showBottomSheet = false
                         },
-                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = PrimaryBrown),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text(if (idEditing == null) "Save Task" else "Update Task")
+                        Text(if (idEditing == null) "Simpan Tugas" else "Perbarui Tugas")
                     }
                 }
             }
@@ -262,12 +316,14 @@ fun TugasScreen(
                 confirmButton = {
                     TextButton(onClick = {
                         datePickerState.selectedDateMillis?.let {
-                            // FIX: Locale.forLanguageTag lebih aman untuk versi baru
-                            val localeID = Locale.forLanguageTag("id-ID")
-                            deadlineInput = SimpleDateFormat("dd MMMM yyyy", localeID).format(Date(it))
+                            val localeID = Locale("id", "ID")
+                            deadlineInput =
+                                SimpleDateFormat("dd MMMM yyyy", localeID).format(Date(it))
                         }
                         showDatePicker = false
-                    }) { Text("OK") }
+                    }) {
+                        Text("OK")
+                    }
                 }
             ) {
                 DatePicker(state = datePickerState)

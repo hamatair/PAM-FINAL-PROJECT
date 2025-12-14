@@ -1,15 +1,21 @@
 package com.example.pam_1.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.pam_1.data.SupabaseClient
@@ -31,27 +37,37 @@ import com.example.pam_1.viewmodel.TugasViewModelFactory // IMPORT INI
 // ==========================
 // TOP APP BAR
 // ==========================
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AppToolbar(navController: NavController) {
-    TopAppBar(
-        title = {
+    Surface(
+        modifier = Modifier.fillMaxWidth().height(80.dp),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 0.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom
+        ) {
             Text(
                 text = "PAM App",
                 style = MaterialTheme.typography.titleLarge
             )
-        },
-        actions = {
+
             IconButton(
-                onClick = { navController.navigateSafe("profile") }
+                onClick = { navController.navigateSafe("profile") },
+                modifier = Modifier.size(24.dp)  // Ukuran lebih kecil
             ) {
                 Icon(
                     imageVector = Icons.Default.Person,
-                    contentDescription = "Profile"
+                    contentDescription = "Profile",
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
-    )
+    }
 }
 
 // ==========================
@@ -89,7 +105,7 @@ fun MainAppScreen(
 
         Box(
             modifier = Modifier
-                .padding(innerPadding)
+                .padding(top = 64.dp ,bottom = innerPadding.calculateBottomPadding())
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background),
             contentAlignment = Alignment.Center

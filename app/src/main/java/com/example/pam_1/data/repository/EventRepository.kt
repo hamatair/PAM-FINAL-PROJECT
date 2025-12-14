@@ -14,15 +14,17 @@ import kotlinx.coroutines.withContext
 
 class EventRepository(private val supabase: SupabaseClient) {
 
-    // --- UPLOAD GAMBAR ---
-    suspend fun uploadEventImage(bytes: ByteArray): String {
+    // --- UPLOAD GAMBAR (DIPERBAIKI: Terima ByteArray) ---
+    suspend fun uploadEventImage(imageBytes: ByteArray): String {
         return withContext(Dispatchers.IO) {
             try {
                 val fileName = "event_${System.currentTimeMillis()}.jpg"
-                println("📤 Uploading event photo: $fileName")
+                println("📤 Uploading event photo: $fileName (${imageBytes.size} bytes)")
 
                 val storageClient = supabase.storage["events"]
-                storageClient.upload(path = fileName, data = bytes) { upsert = true }
+                storageClient.upload(path = fileName, data = imageBytes) {
+                    upsert = true
+                }
 
                 storageClient.publicUrl(fileName)
             } catch (e: Exception) {
@@ -40,7 +42,6 @@ class EventRepository(private val supabase: SupabaseClient) {
         val start = (page - 1) * pageSize
         val end = start + pageSize - 1
 
-        // PERBAIKAN 1: Tambahkan "users(*)" agar data pembuat event ikut terambil
         val queryColumns = Columns.raw("*, users(*), event_category_pivot(category_id, event_category(*))")
 
         return supabase.postgrest["event"]
@@ -52,7 +53,6 @@ class EventRepository(private val supabase: SupabaseClient) {
     }
 
     suspend fun getEventById(eventId: String): Event? {
-        // PERBAIKAN 1: Tambahkan "users(*)" di sini juga
         val queryColumns = Columns.raw("*, users(*), event_category_pivot(category_id, event_category(*))")
 
         return supabase.postgrest["event"]
@@ -65,22 +65,19 @@ class EventRepository(private val supabase: SupabaseClient) {
 
     // --- CREATE ---
     suspend fun createEvent(event: Event, categoryIds: List<String>) {
-        // 1. Insert ke tabel Event
         val createdEvent = supabase.postgrest["event"]
             .insert(event) { select() }
             .decodeSingle<Event>()
 
         val newEventId = createdEvent.eventId ?: throw Exception("Gagal membuat ID Event")
-        // Ambil User ID dari event yang dikirim (pastikan AddEventScreen mengirim userId)
         val currentUserId = event.userId ?: supabase.auth.currentUserOrNull()?.id
 
-        // 2. Insert ke tabel Pivot (Many-to-Many)
         if (categoryIds.isNotEmpty()) {
             val pivots = categoryIds.map { catId ->
                 EventCategoryPivot(
                     eventId = newEventId,
                     categoryId = catId,
-                    userId = currentUserId // <--- PERBAIKAN 2: Wajib isi user_id agar lolos RLS
+                    userId = currentUserId
                 )
             }
             supabase.postgrest["event_category_pivot"].insert(pivots)
@@ -89,17 +86,14 @@ class EventRepository(private val supabase: SupabaseClient) {
 
     // --- UPDATE ---
     suspend fun updateEvent(eventId: String, event: Event, newCategoryIds: List<String>) {
-        // 1. Update data tabel Event
         supabase.postgrest["event"].update(event) {
             filter { eq("event_id", eventId) }
         }
 
-        // 2. Hapus Pivot Lama
         supabase.postgrest["event_category_pivot"].delete {
             filter { eq("event_id", eventId) }
         }
 
-        // 3. Masukkan Pivot Baru
         if (newCategoryIds.isNotEmpty()) {
             val currentUserId = supabase.auth.currentUserOrNull()?.id
                 ?: event.userId
@@ -109,7 +103,7 @@ class EventRepository(private val supabase: SupabaseClient) {
                 EventCategoryPivot(
                     eventId = eventId,
                     categoryId = catId,
-                    userId = currentUserId // Sudah benar (ada userId)
+                    userId = currentUserId
                 )
             }
             supabase.postgrest["event_category_pivot"].insert(newPivots)
@@ -122,4 +116,6 @@ class EventRepository(private val supabase: SupabaseClient) {
             filter { eq("event_id", eventId) }
         }
     }
+
+
 }

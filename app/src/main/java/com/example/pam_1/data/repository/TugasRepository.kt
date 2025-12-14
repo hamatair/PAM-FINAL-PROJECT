@@ -10,11 +10,7 @@ class TugasRepository {
 
     private val client = SupabaseClient.client
 
-    // CREATE (INI BAGIAN YANG DIPERBAIKI)
-    // TugasRepository.kt
-
     suspend fun createTugas(tugas: Tugas) {
-        // 1. Ambil User ID
         val currentUser = client.auth.currentUserOrNull()
         val currentUserId = currentUser?.id
 
@@ -22,13 +18,10 @@ class TugasRepository {
             throw Exception("Anda harus login untuk membuat tugas.")
         }
 
-        // 2. PERBAIKAN: Jangan pakai Map<String, Any>.
-        // Gunakan .copy() untuk menyisipkan user_id ke object Tugas yang sudah ada.
         val tugasBaru = tugas.copy(
-            userId = currentUserId // Masukkan ID user ke sini
+            userId = currentUserId
         )
 
-        // 3. Eksekusi Insert dengan Object Tugas langsung (bukan Map)
         try {
             client.from("tugas").insert(tugasBaru) {
                 select()
@@ -40,15 +33,12 @@ class TugasRepository {
         }
     }
 
-    // READ
     suspend fun getTugas(): List<Tugas> {
         return client.from("tugas").select().decodeList<Tugas>()
     }
 
-    // UPDATE
     suspend fun updateTugas(tugas: Tugas) {
         tugas.id?.let { id ->
-            // Saat update, kita kirim objek tugas apa adanya (atau pakai Map jika mau aman)
             client.from("tugas").update(tugas) {
                 filter { eq("tugas_id", id) }
                 select()
@@ -56,7 +46,6 @@ class TugasRepository {
         }
     }
 
-    // UPDATE STATUS
     suspend fun updateStatus(id: String, isCompleted: Boolean) {
         client.from("tugas").update(mapOf("is_completed" to isCompleted)) {
             filter { eq("tugas_id", id) }
@@ -64,11 +53,12 @@ class TugasRepository {
         }
     }
 
-    // DELETE
     suspend fun deleteTugas(id: String) {
         client.from("tugas").delete {
             filter { eq("tugas_id", id) }
             select()
         }
     }
+
+
 }

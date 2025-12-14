@@ -1,4 +1,4 @@
-package com.example.pam_1.ui.components
+package com.example.pam_1.ui.common
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background

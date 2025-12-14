@@ -22,23 +22,25 @@ fun OTPVerificationScreen(navController: NavController, viewModel: AuthViewModel
     var otpCode by remember { mutableStateOf("") }
     val context = LocalContext.current
     val uiState = viewModel.authState
-    val email = viewModel.pendingEmail
+    val email = viewModel.pendingEmail // Email yang menunggu verifikasi/reset
 
     LaunchedEffect(uiState) {
         when (uiState) {
             is AuthUIState.Success -> {
-                Toast.makeText(context, "Verifikasi Berhasil! Silakan login.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Verifikasi Berhasil! Silakan masuk.", Toast.LENGTH_SHORT).show()
                 // Navigasi setelah sukses dari Registrasi
                 // --- PERBAIKAN 1: Gunakan navigateSafe dengan popUpTo ---
                 navController.navigateSafe("login") {
+                    // Hapus layar register dari back stack
                     popUpTo("register") { inclusive = true }
                 }
                 viewModel.resetState()
             }
 
-            // --- PERUBAHAN UTAMA: Handle alur Reset Password ---
+            // --- PERUBAHAN UTAMA: Handle alur Reset Kata Sandi ---
             is AuthUIState.AwaitingNewPassword -> {
-                // Setelah OTP reset password sukses, navigasi ke layar input password baru
+                // Setelah OTP reset kata sandi sukses, navigasi ke layar input kata sandi baru
+                Toast.makeText(context, "Verifikasi kode berhasil. Atur kata sandi baru Anda.", Toast.LENGTH_LONG).show()
                 // --- PERBAIKAN 2: Gunakan navigateSafe dengan popUpTo ---
                 navController.navigateSafe("new_password") {
                     // Pastikan semua layar OTP dan Forgot Password dihapus dari back stack
@@ -135,9 +137,16 @@ fun OTPVerificationScreen(navController: NavController, viewModel: AuthViewModel
             )
 
             TextButton(
-                onClick = { viewModel.resendOTP() },
+                onClick = {
+                    // Tombol kirim ulang hanya boleh di-klik jika tidak sedang loading
+                    if (uiState !is AuthUIState.Loading) {
+                        viewModel.resendOTP()
+                    }
+                },
                 contentPadding = PaddingValues(0.dp),
-                modifier = Modifier.alignByBaseline()
+                modifier = Modifier.alignByBaseline(),
+                // Nonaktifkan tombol saat loading
+                enabled = uiState !is AuthUIState.Loading
             ) {
                 Text("Kirim Ulang")
             }
@@ -149,10 +158,11 @@ fun OTPVerificationScreen(navController: NavController, viewModel: AuthViewModel
             // --- PERBAIKAN 3: Gunakan popBackStackSafe ---
             onClick = {
                 navController.popBackStackSafe()
-                viewModel.resetState()
+                viewModel.resetState() // Pastikan state direset saat kembali
             }
         ) {
-            Text("Kembali ke Registrasi")
+            // Mengganti teks tombol
+            Text("Kembali")
         }
     }
 }

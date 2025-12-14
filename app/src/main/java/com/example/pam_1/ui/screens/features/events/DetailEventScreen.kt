@@ -22,7 +22,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em // Pastikan import ini ada jika pakai .em, tapi di bawah saya pakai fontSize agar aman
+import androidx.compose.ui.unit.em
 import coil.compose.AsyncImage
 import com.example.pam_1.data.model.DEFAULT_AVATAR
 import com.example.pam_1.data.model.Event
@@ -153,7 +153,7 @@ fun EventDetailContent(
                 ) {
                     AsyncImage(
                         model = event.creator?.photo_profile ?: DEFAULT_AVATAR,
-                        contentDescription = "Creator",
+                        contentDescription = "Pembuat",
                         modifier = Modifier
                             .size(48.dp)
                             .clip(CircleShape)
@@ -163,7 +163,7 @@ fun EventDetailContent(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = event.creator?.username ?: "Unknown",
+                            text = event.creator?.username ?: "Tidak Diketahui",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -268,32 +268,3 @@ fun DetailInfoRow(icon: ImageVector, label: String, value: String) {
         }
     }
 }
-
-//@Composable
-//fun BottomActionBar(event: Event) {
-//    Surface(
-//        modifier = Modifier.fillMaxWidth(),
-//        shadowElevation = 16.dp,
-//        color = Color.White
-//    ) {
-//        Row(
-//            modifier = Modifier
-//                .padding(16.dp)
-//                .navigationBarsPadding(),
-//            verticalAlignment = Alignment.CenterVertically
-//        ) {
-//            Column(modifier = Modifier.weight(1f)) {
-//                Text("Gratis", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = PrimaryBrown)
-//                Text("Terbuka untuk umum", style = MaterialTheme.typography.bodySmall, color = TextGray)
-//            }
-//
-//            Button(
-//                onClick = { /* TODO: Implement Join */ },
-//                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBrown),
-//                shape = RoundedCornerShape(8.dp)
-//            ) {
-//                Text("Gabung Event")
-//            }
-//        }
-//    }
-//}

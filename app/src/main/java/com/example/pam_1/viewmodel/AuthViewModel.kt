@@ -20,7 +20,7 @@ sealed class AuthUIState {
     object Loading : AuthUIState()
     object Success : AuthUIState()
     object AwaitingOTP : AuthUIState()
-    object AwaitingNewPassword : AuthUIState() // [FIX] State ini wajib ada untuk alur reset password
+    object AwaitingNewPassword : AuthUIState()
     data class Error(val message: String) : AuthUIState()
 }
 
@@ -45,11 +45,9 @@ class AuthViewModel(
     var isUpdatingProfile by mutableStateOf(false)
         private set
 
-    // Simpan email untuk verifikasi OTP
     var pendingEmail by mutableStateOf("")
         private set
 
-    // Penanda apakah sedang dalam proses Reset Password atau Register biasa
     var isResetPasswordFlow by mutableStateOf(false)
         private set
 
@@ -74,7 +72,6 @@ class AuthViewModel(
         }
     }
 
-    // Register dengan OTP
     fun register(email: String, pass: String, username: String, full_name: String, phone_number: Nothing?) {
         viewModelScope.launch {
             authState = AuthUIState.Loading
@@ -87,11 +84,9 @@ class AuthViewModel(
                 )
                 authRepository.registerWithOTP(user, pass)
 
-                // Simpan email untuk verifikasi
                 pendingEmail = email
-                isResetPasswordFlow = false // Pastikan ini flow register
+                isResetPasswordFlow = false
 
-                // Set state ke AwaitingOTP
                 authState = AuthUIState.AwaitingOTP
             } catch (e: Exception) {
                 authState = AuthUIState.Error(e.message ?: "Register Gagal")
@@ -99,8 +94,6 @@ class AuthViewModel(
         }
     }
 
-    // [FIX] Mengirim OTP Reset Password (Recovery)
-    // Nama fungsi disesuaikan agar cocok dengan panggilan di ForgotPasswordScreen
     fun sendResetPasswordOTP(email: String) {
         viewModelScope.launch {
             authState = AuthUIState.Loading
@@ -108,33 +101,25 @@ class AuthViewModel(
                 authRepository.sendPasswordReset(email)
 
                 pendingEmail = email
-                isResetPasswordFlow = true // TANDAI INI ADALAH ALUR RESET PASSWORD
+                isResetPasswordFlow = true
 
-                authState = AuthUIState.AwaitingOTP // Langsung navigasi ke layar OTP
+                authState = AuthUIState.AwaitingOTP
             } catch (e: Exception) {
                 authState = AuthUIState.Error(e.message ?: "Gagal mengirim kode reset password")
             }
         }
     }
 
-    // [FIX] Verifikasi OTP (Menangani baik Register maupun Reset Password)
     fun verifyOTP(token: String) {
         viewModelScope.launch {
             authState = AuthUIState.Loading
             try {
                 if (isResetPasswordFlow) {
-                    // ALUR RESET PASSWORD:
-                    // Memanggil fungsi repo yang menggunakan type = OtpType.Email.RECOVERY
                     authRepository.verifyResetPasswordOTP(pendingEmail, token)
-
-                    // Jika sukses, jangan clear pendingEmail dulu (masih butuh buat update password)
                     authState = AuthUIState.AwaitingNewPassword
                 } else {
-                    // ALUR SIGNUP:
-                    // Memanggil fungsi repo yang menggunakan type = OtpType.Email.SIGNUP
                     authRepository.verifyOTP(pendingEmail, token)
-
-                    pendingEmail = "" // Clear email karena sudah selesai
+                    pendingEmail = ""
                     authState = AuthUIState.Success
                 }
             } catch (e: Exception) {
@@ -143,16 +128,13 @@ class AuthViewModel(
         }
     }
 
-    // Kirim ulang OTP
     fun resendOTP() {
         viewModelScope.launch {
             authState = AuthUIState.Loading
             try {
                 if (isResetPasswordFlow) {
-                    // Kirim ulang untuk alur Reset Password
                     authRepository.sendPasswordReset(pendingEmail)
                 } else {
-                    // Kirim ulang untuk alur Sign Up
                     authRepository.resendOTP(pendingEmail)
                 }
                 authState = AuthUIState.AwaitingOTP
@@ -162,17 +144,16 @@ class AuthViewModel(
         }
     }
 
-    // Update Password Baru (Langkah terakhir Reset Password)
     fun updatePassword(newPassword: String) {
         viewModelScope.launch {
             authState = AuthUIState.Loading
             try {
                 authRepository.updatePassword(newPassword)
 
-                isResetPasswordFlow = false // Reset penanda alur
+                isResetPasswordFlow = false
                 pendingEmail = ""
 
-                authState = AuthUIState.Success // Sukses total, kembali ke Login
+                authState = AuthUIState.Success
             } catch (e: Exception) {
                 authState = AuthUIState.Error(e.message ?: "Gagal mengubah password")
             }
@@ -182,7 +163,6 @@ class AuthViewModel(
     fun logout(onResult: () -> Unit) {
         viewModelScope.launch {
             authRepository.logout()
-            // Reset profile state saat logout
             _profileState.value = ProfileUIState.Loading
             onResult()
         }
@@ -214,6 +194,7 @@ class AuthViewModel(
         phone: String,
         bio: String,
         photoBytes: ByteArray?,
+        isPhotoDeleted: Boolean = false,
         onSuccess: () -> Unit,
         onError: (String) -> Unit
     ) {
@@ -227,16 +208,43 @@ class AuthViewModel(
             isUpdatingProfile = true
             try {
                 val currentUser = currentState.user
+                val DEFAULT_AVATAR = "https://jhrbjirccxuhtzygwzgx.supabase.co/storage/v1/object/public/profile/avatar/default.png"
                 var finalPhotoUrl = currentUser.photo_profile
                 val finalPhone = if (phone.isBlank()) null else phone
 
-                // 1. Upload foto baru jika ada
-                if (photoBytes != null) {
+                // 1. Handle foto
+                if (isPhotoDeleted) {
+                    // ✅ HAPUS foto lama dari storage (jika bukan default)
+                    val oldPhotoUrl = currentUser.photo_profile
+                    println("🗑️ Deleting photo - Old URL: $oldPhotoUrl")
+
+                    if (oldPhotoUrl != null && oldPhotoUrl != DEFAULT_AVATAR && !oldPhotoUrl.contains("default.png")) {
+                        val deleted = userRepository.deleteProfilePhoto(oldPhotoUrl)
+                        if (deleted) {
+                            println("✅ Old photo deleted from storage")
+                        } else {
+                            println("⚠️ Failed to delete old photo, but continuing...")
+                        }
+                    }
+
+                    // Set ke default avatar
+                    finalPhotoUrl = DEFAULT_AVATAR
+                    println("📝 Setting photo URL to DEFAULT_AVATAR: $finalPhotoUrl")
+
+                } else if (photoBytes != null) {
+                    // ✅ HAPUS foto lama sebelum upload foto baru (jika bukan default)
+                    val oldPhotoUrl = currentUser.photo_profile
+                    println("📤 Uploading new photo - Old URL: $oldPhotoUrl")
+
+                    if (oldPhotoUrl != null && oldPhotoUrl != DEFAULT_AVATAR && !oldPhotoUrl.contains("default.png")) {
+                        userRepository.deleteProfilePhoto(oldPhotoUrl)
+                    }
+
+                    // Upload foto baru
                     val fileName = "profile_${currentUser.user_id}.jpg"
                     val url = userRepository.uploadProfilePhoto(photoBytes, fileName)
-
-                    // Cache busting: tambahkan timestamp agar gambar refresh
-                    finalPhotoUrl = "$url?t=${System.currentTimeMillis()}"
+                    finalPhotoUrl = url
+                    println("✅ New photo uploaded: $finalPhotoUrl")
                 }
 
                 // 2. Siapkan data user yang akan diupdate
@@ -248,8 +256,18 @@ class AuthViewModel(
                     photo_profile = finalPhotoUrl
                 )
 
+                println("📊 Data to update:")
+                println("   - Username: ${updatedUser.username}")
+                println("   - Full Name: ${updatedUser.full_name}")
+                println("   - Phone: ${updatedUser.phone_number}")
+                println("   - Bio: ${updatedUser.bio}")
+                println("   - Photo URL: ${updatedUser.photo_profile}")
+
                 // 3. Update ke database
                 val savedUser = userRepository.updateUserProfile(updatedUser)
+
+                println("✅ Saved user from DB:")
+                println("   - Photo URL: ${savedUser.photo_profile}")
 
                 // 4. Update UI state dengan data terbaru
                 _profileState.value = ProfileUIState.Success(savedUser)

@@ -36,9 +36,10 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel) {
     LaunchedEffect(uiState) {
         when (uiState) {
             is AuthUIState.Success -> {
-                Toast.makeText(context, "Login Berhasil", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Masuk Berhasil", Toast.LENGTH_SHORT).show()
                 // --- PERBAIKAN 1: Gunakan navigateSafe dengan popUpTo ---
                 navController.navigateSafe("home") {
+                    // Hapus layar login dari back stack agar tidak bisa kembali dengan tombol back
                     popUpTo("login") { inclusive = true }
                 }
                 viewModel.resetState()
@@ -54,7 +55,8 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel) {
     // Tentukan VisualTransformation berdasarkan state passwordVisible
     val visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation()
     val icon = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
-    val description = if (passwordVisible) "Hide password" else "Show password"
+    // Mengganti deskripsi ikon
+    val description = if (passwordVisible) "Sembunyikan kata sandi" else "Tampilkan kata sandi"
 
     Column(
         modifier = Modifier
@@ -63,7 +65,8 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text("Login Supabase", style = MaterialTheme.typography.headlineMedium)
+        // Mengganti judul
+        Text("Masuk ke Supabase", style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(32.dp))
 
         OutlinedTextField(
@@ -76,11 +79,11 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel) {
         )
         Spacer(Modifier.height(16.dp))
 
-        // Password Field dengan Ikon Toggle
+        // Field Kata Sandi dengan Ikon Toggle
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
-            label = { Text("Password") },
+            label = { Text("Kata Sandi") },
             visualTransformation = visualTransformation,
             trailingIcon = {
                 IconButton(onClick = { passwordVisible = !passwordVisible }) {
@@ -92,14 +95,14 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel) {
             singleLine = true
         )
 
-        // Forgot Password & Remember Me
+        // Lupa Kata Sandi & Ingat Saya
         Spacer(Modifier.height(8.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 1. Checkbox "Remember Me"
+            // 1. Kotak Centang "Ingat Saya"
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.clickable { rememberMe = !rememberMe }
@@ -114,14 +117,15 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel) {
                 )
             }
 
-            // 2. Tautan "Lupa Password?"
+            // 2. Tautan "Lupa Kata Sandi?"
             Text(
-                text = "Lupa Password?",
+                text = "Lupa Kata Sandi?",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold,
                 // --- PERBAIKAN 2: Gunakan navigateSafe ---
                 modifier = Modifier.clickable {
+                    // Navigasi ke layar Forgot Password
                     navController.navigateSafe("forgot_password")
                 }
             )

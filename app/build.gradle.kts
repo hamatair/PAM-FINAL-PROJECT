@@ -97,6 +97,8 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.room.common.jvm)
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0")
+    implementation(libs.androidx.compose.runtime)
+    implementation(libs.androidx.compiler)
 
     // Testing
     testImplementation(libs.junit)

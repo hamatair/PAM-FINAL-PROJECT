@@ -33,9 +33,13 @@ import coil.compose.rememberAsyncImagePainter
 import com.example.pam_1.data.SupabaseClient
 import com.example.pam_1.ui.common.CategoryChip
 import com.example.pam_1.ui.theme.*
+import com.example.pam_1.utils.ImageCompressor
 import com.example.pam_1.viewmodel.EventViewModel
 import com.example.pam_1.viewmodel.UiState
 import io.github.jan.supabase.auth.auth
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.InputStream
 import java.text.SimpleDateFormat
 import java.time.LocalDate
@@ -86,17 +90,15 @@ fun AddEventScreen(
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let {
-            selectedImageUri = it
-            val inputStream: InputStream? = context.contentResolver.openInputStream(it)
-            selectedImageBytes = inputStream?.readBytes()
-        }
+        selectedImageUri = uri // Simpan URI saja dulu
     }
+    val scope = rememberCoroutineScope()
 
     // Effect: Handle Success/Error
     LaunchedEffect(actionState) {
         when (actionState) {
             is UiState.Success -> {
+                // Pesan sukses
                 Toast.makeText(context, "Event berhasil dibuat!", Toast.LENGTH_SHORT).show()
                 viewModel.resetActionState()
                 onNavigateBack()
@@ -167,7 +169,6 @@ fun AddEventScreen(
         if (startTime.isBlank()) { startTimeError = "Jam mulai wajib"; isValid = false }
         if (endTime.isBlank()) { endTimeError = "Jam selesai wajib"; isValid = false }
 
-        // Logic Validasi Tanggal & Waktu (Sama seperti sebelumnya)
         var parsedDate: LocalDate? = null
         var parsedStartTime: LocalTime? = null
 
@@ -193,18 +194,28 @@ fun AddEventScreen(
         }
 
         if (isValid && currentUser != null) {
-            viewModel.addEvent(
-                userId = currentUser.id,
-                name = eventName,
-                desc = eventDesc,
-                location = eventLocation,
-                date = eventDate,
-                startTime = startTime,
-                endTime = endTime,
-                selectedCategoryIds = selectedCategoryIds,
-                imageBytes = selectedImageBytes
-            )
+            // PERBAIKAN: Kompress gambar di background thread
+            scope.launch {
+                val imageBytes = selectedImageUri?.let { uri ->
+                    withContext(Dispatchers.IO) {
+                        ImageCompressor.compressImage(context, uri)
+                    }
+                }
+
+                viewModel.addEvent(
+                    userId = currentUser.id,
+                    name = eventName,
+                    desc = eventDesc,
+                    location = eventLocation,
+                    date = eventDate,
+                    startTime = startTime,
+                    endTime = endTime,
+                    selectedCategoryIds = selectedCategoryIds,
+                    imageBytes = imageBytes // Kirim byte array yang sudah dikompres
+                )
+            }
         } else if (currentUser == null) {
+            // Pesan jika sesi habis
             Toast.makeText(context, "Sesi habis, login ulang", Toast.LENGTH_SHORT).show()
         }
     }
@@ -214,6 +225,7 @@ fun AddEventScreen(
         containerColor = BackgroundBeige,
         topBar = {
             CenterAlignedTopAppBar(
+                // Mengganti judul
                 title = { Text("Tambah Event", style = MaterialTheme.typography.titleLarge) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = BackgroundBeige
@@ -250,6 +262,7 @@ fun AddEventScreen(
                     } else {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(Icons.Default.CameraAlt, null, tint = LightBrown, modifier = Modifier.size(48.dp))
+                            // Mengganti teks
                             Text("Unggah Gambar", style = MaterialTheme.typography.bodySmall, color = TextGray)
                         }
                     }
@@ -257,6 +270,7 @@ fun AddEventScreen(
             }
 
             // 2. Input Biasa
+            // Mengganti label
             item { CustomTextField(value = eventName, onValueChange = { eventName = it }, label = "Nama Event", errorMsg = nameError) }
             item { CustomTextField(value = eventDesc, onValueChange = { eventDesc = it }, label = "Deskripsi", singleLine = false, minLines = 3, errorMsg = descError) }
             item { CustomTextField(value = eventLocation, onValueChange = { eventLocation = it }, label = "Lokasi", errorMsg = locationError) }
@@ -265,6 +279,7 @@ fun AddEventScreen(
             item {
                 ClickableReadOnlyTextField(
                     value = eventDate,
+                    // Mengganti label
                     label = "Tanggal Event",
                     icon = Icons.Default.CalendarToday,
                     onClick = { showDatePicker = true },
@@ -278,6 +293,7 @@ fun AddEventScreen(
                     Box(modifier = Modifier.weight(1f)) {
                         ClickableReadOnlyTextField(
                             value = startTime,
+                            // Mengganti label
                             label = "Mulai",
                             icon = Icons.Default.Schedule,
                             onClick = { showStartTimePicker = true },
@@ -287,6 +303,7 @@ fun AddEventScreen(
                     Box(modifier = Modifier.weight(1f)) {
                         ClickableReadOnlyTextField(
                             value = endTime,
+                            // Mengganti label
                             label = "Selesai",
                             icon = Icons.Default.Schedule,
                             onClick = { showEndTimePicker = true },
@@ -298,8 +315,10 @@ fun AddEventScreen(
 
             // 5. Category
             item {
+                // Mengganti judul
                 Text("Kategori", style = MaterialTheme.typography.titleMedium)
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Spacer(modifier = Modifier.height(4.dp))
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                     items(categoryState) { category ->
                         val isSelected = selectedCategoryIds.contains(category.categoryId)
                         CategoryChip(
@@ -318,13 +337,16 @@ fun AddEventScreen(
             item {
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
-                    onClick = { validateAndSubmit() },
+                    onClick = {
+                        validateAndSubmit() // Panggil fungsi validasi
+                    },
                     modifier = Modifier.fillMaxWidth().height(50.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = PrimaryBrown),
                     shape = RoundedCornerShape(2.dp),
                     enabled = actionState !is UiState.Loading
                 ) {
                     if (actionState is UiState.Loading) CircularProgressIndicator(color = White, modifier = Modifier.size(24.dp))
+                    // Mengganti teks tombol
                     else Text("Simpan Event", style = MaterialTheme.typography.labelLarge, color = White)
                 }
             }

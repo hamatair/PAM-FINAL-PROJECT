@@ -50,7 +50,7 @@ fun StudyGroupListScreen(navController: NavController, viewModel: StudyGroupView
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize().padding(top = 10.dp),) {
             // Tab Row
             TabRow(selectedTabIndex = selectedTab) {
                 Tab(

@@ -1,5 +1,7 @@
 package com.example.pam_1.ui.screens.features.events
 
+import android.content.res.Resources
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -11,12 +13,15 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -25,7 +30,6 @@ import com.example.pam_1.ui.common.EventCard
 import com.example.pam_1.ui.theme.*
 import com.example.pam_1.viewmodel.EventViewModel
 import com.example.pam_1.viewmodel.UiState
-// PENTING: Import Extension Functions
 import com.example.pam_1.navigations.navigateSafe
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -77,7 +81,9 @@ fun EventListScreen(
                 onClick = onNavigateToAddEvent,
                 containerColor = PrimaryBrown,
                 contentColor = White
-            ) { Icon(Icons.Default.Add, "Tambah") }
+            ) {
+                Icon(Icons.Default.Add, "Tambah Event")
+            }
         }
     ) { padding ->
         PullToRefreshBox(
@@ -86,29 +92,78 @@ fun EventListScreen(
             state = pullRefreshState,
             modifier = Modifier.padding(padding)
         ) {
-            // PERUBAHAN UTAMA: Gunakan satu LazyColumn untuk SELURUH layar
-            // Ini menjamin layar selalu bisa discroll (untuk refresh) walau isinya kosong
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
-                contentPadding = PaddingValues(top = 0.dp, bottom = 80.dp) // Padding atas bawah
+                contentPadding = PaddingValues(top = 0.dp, bottom = 80.dp)
             ) {
-
-                // --- ITEM 1: HEADER ---
+                // --- ITEM 1: LINK KE MY EVENTS ---
                 item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                navController.navigateSafe("my_events")
+                            },
+                        colors = CardDefaults.cardColors(
+                            containerColor = White
+                        ),
+                        elevation = CardDefaults.cardElevation(
+                            defaultElevation = 2.dp
+                        ),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text(
-                            text = "Event Aktif",
-                            style = MaterialTheme.typography.headlineLarge,
-                            color = TextBlack,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.weight(1f)
-                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = PrimaryBrown.copy(alpha = 0.1f),
+                                    modifier = Modifier.size(40.dp)
+                                ) {
+                                    Box(
+                                        contentAlignment = Alignment.Center,
+                                        modifier = Modifier.fillMaxSize()
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Person,
+                                            contentDescription = null,
+                                            tint = PrimaryBrown,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+                                }
+
+                                Column {
+                                    Text(
+                                        text = "Event Saya",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color.Black
+                                    )
+                                    Text(
+                                        text = "Lihat event yang kamu buat",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = TextGray
+                                    )
+                                }
+                            }
+
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                contentDescription = "Buka Event Saya",
+                                tint = PrimaryBrown
+                            )
+                        }
                     }
                 }
 
@@ -151,11 +206,10 @@ fun EventListScreen(
                 // --- ITEM 4: CONTENT LIST (LOGIC) ---
                 when (val state = eventState) {
                     is UiState.Loading -> {
-                        // Loading awal (hanya jika list benar-benar kosong)
                         if (!viewModel.isLastPage && listState.firstVisibleItemIndex == 0) {
                             item {
                                 Box(
-                                    modifier = Modifier.fillMaxWidth().height(300.dp), // Beri tinggi agar terlihat
+                                    modifier = Modifier.fillMaxWidth().height(300.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     CircularProgressIndicator(color = PrimaryBrown)
@@ -179,14 +233,10 @@ fun EventListScreen(
                         }
 
                         if (filteredEvents.isEmpty()) {
-                            // KUNCI PERBAIKAN:
-                            // Empty State dimasukkan sebagai 'item' di LazyColumn
-                            // Menggunakan fillParentMaxHeight(0.5f) agar menempati sisa layar
-                            // Sehingga layar tetap memiliki struktur scrollable
                             item {
                                 Box(
                                     modifier = Modifier
-                                        .fillParentMaxHeight(0.7f) // Isi 70% sisa layar
+                                        .fillParentMaxHeight(0.7f)
                                         .fillMaxWidth(),
                                     contentAlignment = Alignment.Center
                                 ) {
@@ -194,7 +244,6 @@ fun EventListScreen(
                                 }
                             }
                         } else {
-                            // Render List Event
                             items(filteredEvents) { event ->
                                 EventCard(event = event) {
                                     event.eventId?.let { onNavigateToDetail(it) }
@@ -203,7 +252,6 @@ fun EventListScreen(
                             }
                         }
 
-                        // Loading Indicator (Infinite Scroll)
                         if (viewModel.isLoadingMore && !viewModel.isLastPage) {
                             item {
                                 Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {

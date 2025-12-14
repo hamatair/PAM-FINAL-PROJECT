@@ -34,22 +34,22 @@ import com.example.pam_1.ui.theme.TextBlack
 import java.text.SimpleDateFormat
 import java.util.*
 
-// --- GLOBAL VARIABLES ---
+// --- VARIABEL GLOBAL ---
 // Dipindahkan kesini agar bisa diakses oleh PrioritySelector
 val priorityOptions = listOf("Rendah", "Sedang", "Tinggi")
 
-// --- KOMPONEN KALENDER ---
+// --- KOMPONEN KALENDER HORIZONTAL ---
+// selectedDate: UI format (dd MMMM yyyy)
 @Composable
 fun HorizontalCalendar(selectedDate: String, onDateSelected: (String) -> Unit) {
     val calendar = Calendar.getInstance()
-    // Generate 7 hari ke depan
+    // Generate 7 hari mulai hari ini
     val days = (0..6).map {
         val date = calendar.time
         calendar.add(Calendar.DAY_OF_YEAR, 1)
         date
     }
 
-    // Formatter
     val localeID = Locale.forLanguageTag("id-ID")
     val fullFormat = SimpleDateFormat("dd MMMM yyyy", localeID)
     val dayNameFormat = SimpleDateFormat("EEE", localeID)
@@ -57,7 +57,7 @@ fun HorizontalCalendar(selectedDate: String, onDateSelected: (String) -> Unit) {
 
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = Modifier.padding(vertical = 16.dp)
+        modifier = Modifier.padding(vertical = 0.dp)
     ) {
         items(days) { date ->
             val dateString = fullFormat.format(date)
@@ -67,7 +67,7 @@ fun HorizontalCalendar(selectedDate: String, onDateSelected: (String) -> Unit) {
                     .clip(RoundedCornerShape(16.dp))
                     .background(if (isSelected) PrimaryBrown else Color.White)
                     .clickable { onDateSelected(dateString) }
-                    .padding(vertical = 12.dp, horizontal = 16.dp),
+                    .padding(vertical = 8.dp, horizontal = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
@@ -90,6 +90,9 @@ fun HorizontalCalendar(selectedDate: String, onDateSelected: (String) -> Unit) {
 // --- TAB FILTER ---
 @Composable
 fun FilterTabs(selectedFilter: String, onFilterSelected: (String) -> Unit) {
+    // Bahasa Indonesia: sesuai ViewModel yang aku refactor
+    val filters = listOf("Belum Selesai", "Selesai")
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -98,7 +101,7 @@ fun FilterTabs(selectedFilter: String, onFilterSelected: (String) -> Unit) {
             .padding(4.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        listOf("To Do", "Completed").forEach { filter ->
+        filters.forEach { filter ->
             val isSelected = selectedFilter == filter
             Box(
                 modifier = Modifier
@@ -120,7 +123,7 @@ fun FilterTabs(selectedFilter: String, onFilterSelected: (String) -> Unit) {
     }
 }
 
-// --- TIMELINE CARD ---
+// --- KARTU TIMELINE TUGAS ---
 @Composable
 fun TimelineTaskCard(
     tugas: Tugas,
@@ -128,15 +131,13 @@ fun TimelineTaskCard(
     onEdit: () -> Unit,
     onStatusToggle: () -> Unit
 ) {
-    // FIX WARNA: Sesuaikan dengan "Tinggi", "Sedang", "Rendah"
     val (tagColor, tagText) = when (tugas.priority) {
-        "Tinggi" -> Color(0xFFFFEBEE) to Color(0xFFD32F2F) // Merah
-        "Sedang" -> Color(0xFFFFFDE7) to Color(0xFFFBC02D) // Kuning
-        else -> Color(0xFFE8F5E9) to Color(0xFF388E3C)     // Hijau (Rendah)
+        "Tinggi" -> Color(0xFFFFEBEE) to Color(0xFFD32F2F)
+        "Sedang" -> Color(0xFFFFFDE7) to Color(0xFFFBC02D)
+        else -> Color(0xFFE8F5E9) to Color(0xFF388E3C)
     }
 
     Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
-        // Kolom Kiri: JAM
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.width(50.dp)
@@ -152,7 +153,6 @@ fun TimelineTaskCard(
         }
         Spacer(modifier = Modifier.width(8.dp))
 
-        // Kartu Kanan
         Card(
             modifier = Modifier.weight(1f).padding(bottom = 16.dp),
             shape = RoundedCornerShape(16.dp),
@@ -161,7 +161,6 @@ fun TimelineTaskCard(
             border = BorderStroke(1.dp, Color(0xFFEEEEEE))
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                // Baris Atas Kartu (Label Priority & Checkbox)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Surface(color = tagColor, shape = RoundedCornerShape(6.dp)) {
                         Text(
@@ -183,14 +182,13 @@ fun TimelineTaskCard(
                         contentAlignment = Alignment.Center
                     ) {
                         if (tugas.isCompleted) {
-                            Icon(Icons.Default.Check, null, tint = Color.White, modifier = Modifier.size(14.dp))
+                            Icon(Icons.Default.Check, "Selesai", tint = Color.White, modifier = Modifier.size(14.dp))
                         }
                     }
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Judul & Deskripsi
                 Text(
                     text = tugas.title,
                     fontWeight = FontWeight.Bold,
@@ -205,12 +203,11 @@ fun TimelineTaskCard(
                     maxLines = 2
                 )
 
-                // Gambar (Jika Ada)
                 if (tugas.imageUri != null) {
                     Spacer(modifier = Modifier.height(8.dp))
                     AsyncImage(
                         model = tugas.imageUri,
-                        contentDescription = null,
+                        contentDescription = "Gambar Tugas",
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(100.dp)
@@ -219,16 +216,15 @@ fun TimelineTaskCard(
                     )
                 }
 
-                // Tombol Aksi (Edit & Delete)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
                 ) {
                     IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Outlined.Edit, null, tint = Color.Gray, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Outlined.Edit, "Edit Tugas", tint = Color.Gray, modifier = Modifier.size(16.dp))
                     }
                     IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Outlined.Delete, null, tint = DangerRed, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Outlined.Delete, "Hapus Tugas", tint = DangerRed, modifier = Modifier.size(16.dp))
                     }
                 }
             }
@@ -236,7 +232,7 @@ fun TimelineTaskCard(
     }
 }
 
-// --- PRIORITY SELECTOR ---
+// --- PEMILIH PRIORITAS ---
 @Composable
 fun PrioritySelector(
     selectedPriority: String,
@@ -246,7 +242,6 @@ fun PrioritySelector(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // priorityOptions diambil dari variabel global di paling atas file
         priorityOptions.forEach { priority ->
             val isSelected = priority == selectedPriority
             Box(
@@ -269,7 +264,7 @@ fun PrioritySelector(
     }
 }
 
-// --- DATE PICKER BUTTON ---
+// --- TOMBOL PEMILIH TANGGAL ---
 @Composable
 fun DatePickerButton(dateText: String, onClick: () -> Unit) {
     OutlinedButton(
@@ -283,12 +278,12 @@ fun DatePickerButton(dateText: String, onClick: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(if (dateText.isEmpty()) "Pilih Tanggal" else dateText, color = TextBlack)
-            Icon(Icons.Outlined.CalendarToday, null, tint = PrimaryBrown)
+            Icon(Icons.Outlined.CalendarToday, "Pilih Tanggal", tint = PrimaryBrown)
         }
     }
 }
 
-// --- TIME PICKER BUTTON ---
+// --- TOMBOL PEMILIH JAM ---
 @Composable
 fun TimePickerButton(timeText: String, onClick: () -> Unit) {
     OutlinedButton(
@@ -302,12 +297,12 @@ fun TimePickerButton(timeText: String, onClick: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(if (timeText.isEmpty()) "Pilih Jam" else timeText, color = TextBlack)
-            Icon(Icons.Outlined.Schedule, null, tint = PrimaryBrown)
+            Icon(Icons.Outlined.Schedule, "Pilih Jam", tint = PrimaryBrown)
         }
     }
 }
 
-// --- INPUT FIELD ---
+// --- FIELD INPUT KAMPUS ---
 @Composable
 fun CampusInputField(
     value: String,

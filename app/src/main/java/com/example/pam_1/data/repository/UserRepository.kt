@@ -66,14 +66,15 @@ class UserRepository {
                 val userId = user.user_id ?: throw Exception("User ID tidak valid")
 
                 println("🔄 Updating user profile for ID: $userId")
+                println("📝 Photo URL to update: ${user.photo_profile}")
 
-                // ✅ STEP 1: Update data menggunakan DTO
-                val updateData = User(
-                    username = user.username,
-                    full_name = user.full_name,
-                    phone_number = user.phone_number,
-                    bio = user.bio,
-                    photo_profile = user.photo_profile
+                // ✅ STEP 1: Buat map data untuk update (lebih eksplisit)
+                val updateData = mapOf(
+                    "username" to user.username,
+                    "full_name" to user.full_name,
+                    "phone_number" to user.phone_number,
+                    "bio" to user.bio,
+                    "photo_profile" to user.photo_profile // Pastikan ini ter-include
                 )
 
                 // Update tanpa expect return data
@@ -85,6 +86,7 @@ class UserRepository {
                     }
 
                 println("✅ Update executed successfully")
+                println("✅ Photo profile updated to: ${user.photo_profile}")
 
                 // ✅ STEP 2: Fetch data terbaru setelah update
                 val response = supabase.postgrest[userTable]
@@ -141,6 +143,47 @@ class UserRepository {
                 println("❌ Error uploading profile photo: ${e.message}")
                 e.printStackTrace()
                 throw Exception("Gagal upload foto: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Hapus foto profile dari Supabase Storage
+     * ✅ NEW: Fungsi untuk menghapus foto dari bucket
+     */
+    suspend fun deleteProfilePhoto(photoUrl: String): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Jika URL adalah default avatar, skip penghapusan
+                if (photoUrl == DEFAULT_AVATAR || photoUrl.contains("default.png")) {
+                    println("⏭️ Skipping deletion of default avatar")
+                    return@withContext true
+                }
+
+                // Extract filename dari URL
+                // URL format: https://.../storage/v1/object/public/profile/profile_userid.jpg
+                val fileName = photoUrl.substringAfterLast("/").substringBefore("?")
+
+                if (fileName.isBlank()) {
+                    println("⚠️ Invalid filename from URL: $photoUrl")
+                    return@withContext false
+                }
+
+                println("🗑️ Deleting profile photo: $fileName")
+
+                val storageClient = supabase.storage[profile_bucket]
+
+                storageClient.delete(fileName)
+
+                println("✅ Photo deleted successfully: $fileName")
+                true
+
+            } catch (e: Exception) {
+                println("❌ Error deleting profile photo: ${e.message}")
+                e.printStackTrace()
+                // Tidak throw exception karena ini bukan critical error
+                // Return false untuk indicate kegagalan
+                false
             }
         }
     }
