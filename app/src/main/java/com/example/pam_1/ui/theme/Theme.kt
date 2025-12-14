@@ -15,7 +15,6 @@ private val LightColorScheme = lightColorScheme(
 
     background = BackgroundBeige,
     onBackground = TextBlack,
-
     surface = White, // Kartu biasanya putih
     onSurface = TextBlack,
 
