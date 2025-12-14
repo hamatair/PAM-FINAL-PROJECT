@@ -26,7 +26,7 @@ import java.time.format.DateTimeFormatter
 fun InviteManagementScreen(
         navController: NavController,
         viewModel: StudyGroupViewModel,
-        groupId: String
+        groupId: Long
 ) {
     val context = LocalContext.current
     val uiState = viewModel.uiState

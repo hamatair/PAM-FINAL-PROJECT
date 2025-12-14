@@ -20,11 +20,7 @@ import com.example.pam_1.viewmodel.StudyGroupViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GroupDetailScreen(
-        navController: NavController,
-        viewModel: StudyGroupViewModel,
-        groupId: String
-) {
+fun GroupDetailScreen(navController: NavController, viewModel: StudyGroupViewModel, groupId: Long) {
     val context = LocalContext.current
     val uiState = viewModel.uiState
     val group = viewModel.selectedGroup
@@ -192,7 +188,11 @@ fun GroupDetailScreen(
                             onClick = { selectedTab = 0 },
                             text = { Text("Members") }
                     )
-                    // Future: Files tab
+                    Tab(
+                            selected = selectedTab == 1,
+                            onClick = { selectedTab = 1 },
+                            text = { Text("Chat") }
+                    )
                 }
 
                 // Content
@@ -222,6 +222,13 @@ fun GroupDetailScreen(
                                         }
                                 )
                             }
+                        }
+                    }
+                    1 -> {
+                        // Navigate to chat screen
+                        LaunchedEffect(Unit) {
+                            navController.navigate("group_chat/$groupId")
+                            selectedTab = 0 // Reset tab when returning
                         }
                     }
                 }
@@ -306,11 +313,25 @@ fun MemberCard(
                         modifier = Modifier.size(32.dp)
                 )
                 Column {
+                    // Display full name or username
                     Text(
-                            text = member.userId.take(8), // Display partial user ID
+                            text = member.getDisplayName(),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold
                     )
+                    // Show username if available and different from display name
+                    member.username?.let { username ->
+                        if (username != member.fullName) {
+                            Text(
+                                    text = "@$username",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color =
+                                            MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                                                    alpha = 0.7f
+                                            )
+                            )
+                        }
+                    }
                     AssistChip(
                             onClick = {},
                             label = { Text(role.value) },

@@ -5,24 +5,59 @@ import com.example.pam_1.data.model.GroupMember
 import com.example.pam_1.data.model.GroupRole
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.*
 
 class GroupMemberRepository {
     private val client = SupabaseClient.client
 
     /** Get all members of a group */
-    suspend fun getGroupMembers(groupId: String): Result<List<GroupMember>> =
+    suspend fun getGroupMembers(groupId: Long): Result<List<GroupMember>> =
             withContext(Dispatchers.IO) {
                 try {
                     val members =
                             client.from("group_members")
-                                    .select {
+                                    .select(
+                                            columns =
+                                                    Columns.raw(
+                                                            "*,profiles:user_id(full_name,username,email)"
+                                                    )
+                                    ) {
                                         filter { eq("group_id", groupId) }
-                                        order("joined_at", Order.ASCENDING )
+                                        order("joined_at", Order.ASCENDING)
                                     }
-                                    .decodeList<GroupMember>()
+                                    .decodeList<JsonObject>()
+                                    .map { json ->
+                                        // Extract member fields
+                                        val id = json["id"]?.jsonPrimitive?.longOrNull
+                                        val groupIdVal =
+                                                json["group_id"]?.jsonPrimitive?.longOrNull ?: 0L
+                                        val userId = json["user_id"]?.jsonPrimitive?.content ?: ""
+                                        val role = json["role"]?.jsonPrimitive?.content ?: "member"
+                                        val joinedAt = json["joined_at"]?.jsonPrimitive?.content
+
+                                        // Extract profile info from joined data
+                                        val profile = json["profiles"]?.jsonObject
+                                        val fullName =
+                                                profile?.get("full_name")?.jsonPrimitive?.content
+                                        val username =
+                                                profile?.get("username")?.jsonPrimitive?.content
+                                        val email = profile?.get("email")?.jsonPrimitive?.content
+
+                                        GroupMember(
+                                                id = id,
+                                                groupId = groupIdVal,
+                                                userId = userId,
+                                                role = role,
+                                                joinedAt = joinedAt,
+                                                fullName = fullName,
+                                                username = username,
+                                                email = email
+                                        )
+                                    }
 
                     Result.success(members)
                 } catch (e: Exception) {
@@ -32,7 +67,7 @@ class GroupMemberRepository {
 
     /** Add a member to a group This is typically called after invite validation */
     suspend fun addMember(
-            groupId: String,
+            groupId: Long,
             userId: String,
             role: GroupRole = GroupRole.MEMBER
     ): Result<GroupMember> =
@@ -56,7 +91,7 @@ class GroupMemberRepository {
      * Remove a member from a group Can be called by owner/moderator to remove others, or by member
      * to leave
      */
-    suspend fun removeMember(groupId: String, userId: String): Result<Unit> =
+    suspend fun removeMember(groupId: Long, userId: String): Result<Unit> =
             withContext(Dispatchers.IO) {
                 try {
                     client.from("group_members").delete {
@@ -74,7 +109,7 @@ class GroupMemberRepository {
 
     /** Update a member's role Only owner/moderator can do this */
     suspend fun updateMemberRole(
-            groupId: String,
+            groupId: Long,
             userId: String,
             newRole: GroupRole
     ): Result<GroupMember> =
@@ -98,7 +133,7 @@ class GroupMemberRepository {
             }
 
     /** Leave a group (remove self) */
-    suspend fun leaveGroup(groupId: String): Result<Unit> =
+    suspend fun leaveGroup(groupId: Long): Result<Unit> =
             withContext(Dispatchers.IO) {
                 try {
                     val userId =
@@ -114,7 +149,7 @@ class GroupMemberRepository {
             }
 
     /** Check if current user is a member of the group */
-    suspend fun isMember(groupId: String): Result<Boolean> =
+    suspend fun isMember(groupId: Long): Result<Boolean> =
             withContext(Dispatchers.IO) {
                 try {
                     val userId =
@@ -138,7 +173,7 @@ class GroupMemberRepository {
             }
 
     /** Get current user's role in the group */
-    suspend fun getUserRole(groupId: String): Result<GroupRole?> =
+    suspend fun getUserRole(groupId: Long): Result<GroupRole?> =
             withContext(Dispatchers.IO) {
                 try {
                     val userId =
@@ -164,7 +199,7 @@ class GroupMemberRepository {
             }
 
     /** Get member count for a group */
-    suspend fun getMemberCount(groupId: String): Result<Int> =
+    suspend fun getMemberCount(groupId: Long): Result<Int> =
             withContext(Dispatchers.IO) {
                 try {
                     val members = getGroupMembers(groupId).getOrThrow()

@@ -21,7 +21,7 @@ import com.example.pam_1.viewmodel.StudyGroupViewModel
 fun CreateEditGroupScreen(
         navController: NavController,
         viewModel: StudyGroupViewModel,
-        groupId: String? = null // If null, create mode; if not null, edit mode
+        groupId: Long? = null // If null, create mode; if not null, edit mode
 ) {
     var name by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }

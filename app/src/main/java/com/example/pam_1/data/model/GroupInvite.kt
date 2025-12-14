@@ -5,11 +5,10 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class GroupInvite(
-        @SerialName("id") val id: String? = null,
-        @SerialName("group_id") val groupId: String = "",
+        @SerialName("id") val id: Long? = null, // Changed to Long (BIGINT)
+        @SerialName("group_id") val groupId: Long = 0, // Changed to Long (BIGINT)
         @SerialName("code") val code: String = "",
-        @SerialName("code_hash") val codeHash: String? = null,
-        @SerialName("created_by") val createdBy: String? = null,
+        @SerialName("created_by") val createdBy: String? = null, // UUID stays as String
         @SerialName("created_at") val createdAt: String? = null,
         @SerialName("expires_at") val expiresAt: String? = null,
         @SerialName("max_uses") val maxUses: Int = 1,

@@ -20,62 +20,74 @@ import com.example.pam_1.viewmodel.StudyGroupViewModelFactory
 
 @Composable
 fun AppNavigation() {
-    val navController = rememberNavController()
-    val context = LocalContext.current
+        val navController = rememberNavController()
+        val context = LocalContext.current
 
-    // Pass context ke AuthRepository
-    val authRepository = remember { AuthRepository(context) }
-    val userRepository = remember { UserRepository() }
+        // Pass context ke AuthRepository
+        val authRepository = remember { AuthRepository(context) }
+        val userRepository = remember { UserRepository() }
 
-    val viewModel: AuthViewModel =
-            viewModel(
-                    factory =
-                            AuthViewModelFactory(
-                                    authRepository = authRepository,
-                                    userRepository = userRepository
-                            )
-            )
+        val viewModel: AuthViewModel =
+                viewModel(
+                        factory =
+                                AuthViewModelFactory(
+                                        authRepository = authRepository,
+                                        userRepository = userRepository
+                                )
+                )
 
-    // Study Group repositories and ViewModel
-    val groupRepository = remember { StudyGroupRepository() }
-    val memberRepository = remember { GroupMemberRepository() }
-    val inviteRepository = remember { GroupInviteRepository() }
+        // Study Group repositories and ViewModel
+        val groupRepository = remember { StudyGroupRepository() }
+        val memberRepository = remember { GroupMemberRepository() }
+        val inviteRepository = remember { GroupInviteRepository() }
 
-    val studyGroupViewModel: StudyGroupViewModel =
-            viewModel(
-                    factory =
-                            StudyGroupViewModelFactory(
-                                    groupRepository = groupRepository,
-                                    memberRepository = memberRepository,
-                                    inviteRepository = inviteRepository
-                            )
-            )
+        val studyGroupViewModel: StudyGroupViewModel =
+                viewModel(
+                        factory =
+                                StudyGroupViewModelFactory(
+                                        groupRepository = groupRepository,
+                                        memberRepository = memberRepository,
+                                        inviteRepository = inviteRepository
+                                )
+                )
 
-    NavHost(navController = navController, startDestination = "splash") {
-        composable("splash") { SplashScreen(navController, authRepository) }
-        composable("login") { LoginScreen(navController, viewModel) }
-        composable("register") { RegisterScreen(navController, viewModel) }
-        // Route baru untuk verifikasi OTP
-        composable("otp_verification") { OTPVerificationScreen(navController, viewModel) }
-        composable("home") { MainAppScreen(navController, viewModel) }
-        composable("forgot_password") { ForgotPasswordScreen(navController, viewModel) }
-        composable("new_password") { NewPasswordScreen(navController, viewModel) }
-        composable("profile") { ProfileScreen(navController, viewModel) }
-        // Study Group Routes
-        composable("study_groups") { StudyGroupListScreen(navController, studyGroupViewModel) }
-        composable("create_group") { CreateEditGroupScreen(navController, studyGroupViewModel) }
-        composable("edit_group/{groupId}") { backStackEntry ->
-            val groupId = backStackEntry.arguments?.getString("groupId")
-            groupId?.let { CreateEditGroupScreen(navController, studyGroupViewModel, it) }
+        NavHost(navController = navController, startDestination = "splash") {
+                composable("splash") { SplashScreen(navController, authRepository) }
+                composable("login") { LoginScreen(navController, viewModel) }
+                composable("register") { RegisterScreen(navController, viewModel) }
+                // Route baru untuk verifikasi OTP
+                composable("otp_verification") { OTPVerificationScreen(navController, viewModel) }
+                composable("home") { MainAppScreen(navController, viewModel) }
+                composable("forgot_password") { ForgotPasswordScreen(navController, viewModel) }
+                composable("new_password") { NewPasswordScreen(navController, viewModel) }
+                composable("profile") { ProfileScreen(navController, viewModel) }
+                // Study Group Routes
+                composable("study_groups") {
+                        StudyGroupListScreen(navController, studyGroupViewModel)
+                }
+                composable("create_group") {
+                        CreateEditGroupScreen(navController, studyGroupViewModel)
+                }
+                composable("edit_group/{groupId}") { backStackEntry ->
+                        val groupId = backStackEntry.arguments?.getString("groupId")?.toLongOrNull()
+                        groupId?.let {
+                                CreateEditGroupScreen(navController, studyGroupViewModel, it)
+                        }
+                }
+                composable("group_detail/{groupId}") { backStackEntry ->
+                        val groupId = backStackEntry.arguments?.getString("groupId")?.toLongOrNull()
+                        groupId?.let { GroupDetailScreen(navController, studyGroupViewModel, it) }
+                }
+                composable("manage_invites/{groupId}") { backStackEntry ->
+                        val groupId = backStackEntry.arguments?.getString("groupId")?.toLongOrNull()
+                        groupId?.let {
+                                InviteManagementScreen(navController, studyGroupViewModel, it)
+                        }
+                }
+                composable("group_chat/{groupId}") { backStackEntry ->
+                        val groupId = backStackEntry.arguments?.getString("groupId")?.toLongOrNull()
+                        groupId?.let { GroupChatScreen(navController, it) }
+                }
+                composable("join_group") { JoinGroupScreen(navController, studyGroupViewModel) }
         }
-        composable("group_detail/{groupId}") { backStackEntry ->
-            val groupId = backStackEntry.arguments?.getString("groupId")
-            groupId?.let { GroupDetailScreen(navController, studyGroupViewModel, it) }
-        }
-        composable("manage_invites/{groupId}") { backStackEntry ->
-            val groupId = backStackEntry.arguments?.getString("groupId")
-            groupId?.let { InviteManagementScreen(navController, studyGroupViewModel, it) }
-        }
-        composable("join_group") { JoinGroupScreen(navController, studyGroupViewModel) }
-    }
 }

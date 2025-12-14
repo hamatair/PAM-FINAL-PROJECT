@@ -9,6 +9,11 @@ import io.github.jan.supabase.postgrest.query.Order
 import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
+import kotlinx.serialization.json.put
 
 class StudyGroupRepository {
     private val client = SupabaseClient.client
@@ -29,15 +34,15 @@ class StudyGroupRepository {
                                             Exception("User not authenticated")
                                     )
 
-                    val newGroup =
-                            mapOf(
-                                    "owner" to userId,
-                                    "name" to name,
-                                    "description" to description,
-                                    "course" to course,
-                                    "is_public" to isPublic,
-                                    "image_url" to imageUrl
-                            )
+                    // Use buildJsonObject explicitly for serialization support
+                    val newGroup = buildJsonObject {
+                        put("owner", userId)
+                        put("name", name)
+                        description?.let { put("description", it) }
+                        course?.let { put("course", it) }
+                        put("is_public", isPublic)
+                        imageUrl?.let { put("image_url", it) }
+                    }
 
                     val result =
                             client.from("study_groups")
@@ -52,7 +57,7 @@ class StudyGroupRepository {
 
     /** Update an existing study group */
     suspend fun updateGroup(
-            groupId: String,
+            groupId: Long,
             name: String?,
             description: String?,
             course: String?,
@@ -61,12 +66,14 @@ class StudyGroupRepository {
     ): Result<StudyGroup> =
             withContext(Dispatchers.IO) {
                 try {
-                    val updates = mutableMapOf<String, Any?>()
-                    name?.let { updates["name"] = it }
-                    description?.let { updates["description"] = it }
-                    course?.let { updates["course"] = it }
-                    isPublic?.let { updates["is_public"] = it }
-                    imageUrl?.let { updates["image_url"] = it }
+                    // Use buildJsonObject explicitly
+                    val updates = buildJsonObject {
+                        name?.let { put("name", it) }
+                        description?.let { put("description", it) }
+                        course?.let { put("course", it) }
+                        isPublic?.let { put("is_public", it) }
+                        imageUrl?.let { put("image_url", it) }
+                    }
 
                     val result =
                             client.from("study_groups")
@@ -83,7 +90,7 @@ class StudyGroupRepository {
             }
 
     /** Delete a study group (owner only) */
-    suspend fun deleteGroup(groupId: String): Result<Unit> =
+    suspend fun deleteGroup(groupId: Long): Result<Unit> =
             withContext(Dispatchers.IO) {
                 try {
                     client.from("study_groups").delete { filter { eq("id", groupId) } }
@@ -105,12 +112,14 @@ class StudyGroupRepository {
                                     )
 
                     // Get group IDs where user is a member
+                    // Decode to JsonObject instead of Map<String, Any>
                     val memberGroups =
                             client.from("group_members")
                                     .select { filter { eq("user_id", userId) } }
-                                    .decodeList<Map<String, String>>()
+                                    .decodeList<JsonObject>()
 
-                    val groupIds = memberGroups.mapNotNull { it["group_id"] }
+                    val groupIds =
+                            memberGroups.mapNotNull { it["group_id"]?.jsonPrimitive?.longOrNull }
 
                     if (groupIds.isEmpty()) {
                         return@withContext Result.success(emptyList())
@@ -147,7 +156,7 @@ class StudyGroupRepository {
             }
 
     /** Get a specific group by ID */
-    suspend fun getGroupById(groupId: String): Result<StudyGroup> =
+    suspend fun getGroupById(groupId: Long): Result<StudyGroup> =
             withContext(Dispatchers.IO) {
                 try {
                     val group =
@@ -167,7 +176,7 @@ class StudyGroupRepository {
      * @param imageUri Local URI of the image file
      * @return The public URL of the uploaded image
      */
-    suspend fun uploadGroupImage(groupId: String, imageUri: Uri): Result<String> =
+    suspend fun uploadGroupImage(groupId: Long, imageUri: Uri): Result<String> =
             withContext(Dispatchers.IO) {
                 try {
                     val bucket = client.storage.from("group_images")

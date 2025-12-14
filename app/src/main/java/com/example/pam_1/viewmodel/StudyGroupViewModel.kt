@@ -112,7 +112,7 @@ class StudyGroupViewModel(
 
     /** Update an existing group */
     fun updateGroup(
-            groupId: String,
+            groupId: Long,
             name: String?,
             description: String?,
             course: String?,
@@ -141,7 +141,7 @@ class StudyGroupViewModel(
     }
 
     /** Delete a group */
-    fun deleteGroup(groupId: String) {
+    fun deleteGroup(groupId: Long) {
         viewModelScope.launch {
             uiState = StudyGroupUIState.Loading
             groupRepository
@@ -158,7 +158,7 @@ class StudyGroupViewModel(
     }
 
     /** Load a specific group by ID */
-    fun loadGroupById(groupId: String) {
+    fun loadGroupById(groupId: Long) {
         viewModelScope.launch {
             uiState = StudyGroupUIState.Loading
             groupRepository
@@ -177,7 +177,7 @@ class StudyGroupViewModel(
     }
 
     /** Load members of a group */
-    fun loadGroupMembers(groupId: String) {
+    fun loadGroupMembers(groupId: Long) {
         viewModelScope.launch {
             memberRepository
                     .getGroupMembers(groupId)
@@ -189,21 +189,21 @@ class StudyGroupViewModel(
     }
 
     /** Load current user's role in the group */
-    private fun loadCurrentUserRole(groupId: String) {
+    private fun loadCurrentUserRole(groupId: Long) {
         viewModelScope.launch {
             memberRepository.getUserRole(groupId).onSuccess { role -> currentUserRole = role }
         }
     }
 
     /** Load member count */
-    private fun loadMemberCount(groupId: String) {
+    private fun loadMemberCount(groupId: Long) {
         viewModelScope.launch {
             memberRepository.getMemberCount(groupId).onSuccess { count -> memberCount = count }
         }
     }
 
     /** Leave a group */
-    fun leaveGroup(groupId: String) {
+    fun leaveGroup(groupId: Long) {
         viewModelScope.launch {
             uiState = StudyGroupUIState.Loading
             memberRepository
@@ -220,7 +220,7 @@ class StudyGroupViewModel(
     }
 
     /** Remove a member from the group */
-    fun removeMember(groupId: String, userId: String) {
+    fun removeMember(groupId: Long, userId: String) {
         viewModelScope.launch {
             uiState = StudyGroupUIState.Loading
             memberRepository
@@ -237,7 +237,7 @@ class StudyGroupViewModel(
     }
 
     /** Update member role */
-    fun updateMemberRole(groupId: String, userId: String, newRole: GroupRole) {
+    fun updateMemberRole(groupId: Long, userId: String, newRole: GroupRole) {
         viewModelScope.launch {
             uiState = StudyGroupUIState.Loading
             memberRepository
@@ -253,7 +253,7 @@ class StudyGroupViewModel(
     }
 
     /** Create an invite */
-    fun createInvite(groupId: String, maxUses: Int, expiresInDays: Int?) {
+    fun createInvite(groupId: Long, maxUses: Int, expiresInDays: Int?) {
         viewModelScope.launch {
             uiState = StudyGroupUIState.Loading
             inviteRepository
@@ -269,7 +269,7 @@ class StudyGroupViewModel(
     }
 
     /** Load invites for a group */
-    fun loadGroupInvites(groupId: String) {
+    fun loadGroupInvites(groupId: Long) {
         viewModelScope.launch {
             inviteRepository
                     .getGroupInvites(groupId)
@@ -298,7 +298,7 @@ class StudyGroupViewModel(
     }
 
     /** Deactivate an invite */
-    fun deactivateInvite(inviteId: String, groupId: String) {
+    fun deactivateInvite(inviteId: Long, groupId: Long) {
         viewModelScope.launch {
             uiState = StudyGroupUIState.Loading
             inviteRepository

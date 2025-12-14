@@ -5,8 +5,8 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class StudyGroup(
-        @SerialName("id") val id: String? = null,
-        @SerialName("owner") val owner: String = "",
+        @SerialName("id") val id: Long? = null, // Changed from String to Long (BIGINT)
+        @SerialName("owner") val owner: String = "", // UUID stays as String
         @SerialName("name") val name: String = "",
         @SerialName("description") val description: String? = null,
         @SerialName("course") val course: String? = null,
