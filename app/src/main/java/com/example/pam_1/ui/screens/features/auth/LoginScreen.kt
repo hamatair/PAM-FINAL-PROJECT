@@ -1,4 +1,4 @@
-package com.example.pam_1.ui.screens
+package com.example.pam_1.ui.screens.features.auth
 
 import android.widget.Toast
 import androidx.compose.foundation.clickable
@@ -20,13 +20,14 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.pam_1.viewmodel.AuthUIState
 import com.example.pam_1.viewmodel.AuthViewModel
+// PENTING: Import Extension Functions
+import com.example.pam_1.navigations.navigateSafe
 
 @Composable
 fun LoginScreen(navController: NavController, viewModel: AuthViewModel) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var rememberMe by remember { mutableStateOf(true) }
-    // State baru untuk mengontrol visibilitas password
     var passwordVisible by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
@@ -36,7 +37,8 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel) {
         when (uiState) {
             is AuthUIState.Success -> {
                 Toast.makeText(context, "Login Berhasil", Toast.LENGTH_SHORT).show()
-                navController.navigate("home") {
+                // --- PERBAIKAN 1: Gunakan navigateSafe dengan popUpTo ---
+                navController.navigateSafe("home") {
                     popUpTo("login") { inclusive = true }
                 }
                 viewModel.resetState()
@@ -79,35 +81,51 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel) {
             value = password,
             onValueChange = { password = it },
             label = { Text("Password") },
-            visualTransformation = visualTransformation, // Menggunakan visualTransformation yang dinamis
+            visualTransformation = visualTransformation,
             trailingIcon = {
-                // IconButton untuk mengubah state passwordVisible
                 IconButton(onClick = { passwordVisible = !passwordVisible }) {
                     Icon(imageVector = icon, contentDescription = description)
                 }
             },
             modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), // Opsional: Pastikan KeyboardType adalah Password
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             singleLine = true
         )
 
-        // --- TAMBAHAN: Clickable Forgot Password ---
+        // Forgot Password & Remember Me
         Spacer(Modifier.height(8.dp))
-        Box(
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            contentAlignment = Alignment.CenterEnd // Rata Kanan
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
+            // 1. Checkbox "Remember Me"
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { rememberMe = !rememberMe }
+            ) {
+                Checkbox(
+                    checked = rememberMe,
+                    onCheckedChange = { rememberMe = it },
+                )
+                Text(
+                    text = "Ingat Saya",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+
+            // 2. Tautan "Lupa Password?"
             Text(
                 text = "Lupa Password?",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold,
+                // --- PERBAIKAN 2: Gunakan navigateSafe ---
                 modifier = Modifier.clickable {
-                    navController.navigate("forgot_password")
+                    navController.navigateSafe("forgot_password")
                 }
             )
         }
-        // -------------------------------------------
 
         Spacer(Modifier.height(24.dp))
 
@@ -142,7 +160,8 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel) {
                     color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.clickable { navController.navigate("register") }
+                    // --- PERBAIKAN 3: Gunakan navigateSafe ---
+                    modifier = Modifier.clickable { navController.navigateSafe("register") }
                 )
             }
         }

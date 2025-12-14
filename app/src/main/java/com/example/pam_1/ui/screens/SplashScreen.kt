@@ -9,6 +9,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavController
 import com.example.pam_1.data.repository.AuthRepository
+// PENTING: Import extension function navigateSafe
+import com.example.pam_1.navigations.navigateSafe
 import kotlinx.coroutines.delay
 
 @Composable
@@ -21,11 +23,13 @@ fun SplashScreen(navController: NavController, repository: AuthRepository) {
         val isLoggedIn = repository.isUserLoggedIn()
 
         if (isLoggedIn) {
-            navController.navigate("home") {
+            // UBAH DISINI: Gunakan navigateSafe
+            navController.navigateSafe("home") {
                 popUpTo("splash") { inclusive = true }
             }
         } else {
-            navController.navigate("login") {
+            // UBAH DISINI: Gunakan navigateSafe
+            navController.navigateSafe("login") {
                 popUpTo("splash") { inclusive = true }
             }
         }

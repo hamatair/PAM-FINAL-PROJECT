@@ -11,22 +11,18 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import com.example.pam_1.navigations.AppNavigation
 import com.example.pam_1.ui.theme.Pam_1Theme
+import androidx.core.content.edit
 
-// Nama key untuk SharedPreferences
+
 private const val PREFS_NAME = "PamAppPrefs"
 private const val KEY_PERMISSIONS_ASKED = "permissions_asked"
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // SupabaseClient object sudah membuat client (sesuai file SupabaseClient.kt kamu).
-        // Tidak perlu memodifikasi SupabaseClient di sini untuk v3.2.6.
-
         setContent {
             Pam_1Theme {
                 // Panggil fungsi request permission
@@ -55,7 +51,6 @@ fun RequestPermissionsOnStart(context: Context) {
             Manifest.permission.CAMERA
         )
     }
-
     fun allPermissionsGranted(permissions: Array<String>): Boolean {
         return permissions.all {
             ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
@@ -68,15 +63,14 @@ fun RequestPermissionsOnStart(context: Context) {
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        prefs.edit().putBoolean(KEY_PERMISSIONS_ASKED, true).apply()
+        prefs.edit { putBoolean(KEY_PERMISSIONS_ASKED, true) }
     }
-
     LaunchedEffect(Unit) {
         if (!hasAskedPermissions) {
             if (!allPermissionsGranted(permissionsToRequest)) {
                 launcher.launch(permissionsToRequest)
             } else {
-                prefs.edit().putBoolean(KEY_PERMISSIONS_ASKED, true).apply()
+                prefs.edit { putBoolean(KEY_PERMISSIONS_ASKED, true) }
             }
         }
     }

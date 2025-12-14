@@ -8,11 +8,9 @@ import androidx.compose.material.icons.automirrored.outlined.StickyNote2
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.MonetizationOn
-import androidx.compose.material.icons.filled.StickyNote2
 import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.MonetizationOn
-import androidx.compose.material.icons.outlined.StickyNote2
 import androidx.compose.ui.graphics.vector.ImageVector
 
 sealed class NavigationItem(

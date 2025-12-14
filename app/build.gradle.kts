@@ -94,6 +94,8 @@ dependencies {
     implementation(libs.androidx.compose.foundation.layout)
     implementation(libs.androidx.compose.testing)
     implementation(libs.androidx.tools.core)
+    implementation(libs.androidx.ui.graphics)
+    implementation(libs.androidx.room.common.jvm)
 
     // Testing
     testImplementation(libs.junit)

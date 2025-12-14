@@ -75,16 +75,6 @@ class AuthRepository(context: Context) {
         dataStoreManager.saveRememberMe(false)
     }
 
-    suspend fun testConnection(): Boolean {
-        return try {
-            val res = supabase.from("users").select()
-            println("Supabase Connected: ${res.data}")
-            true
-        } catch (e: Exception) {
-            println("Supabase Error: ${e.message}")
-            false
-        }
-    }
 
     // ========================================
     // FUNGSI RESET PASSWORD (Menggunakan resetPasswordForEmail)

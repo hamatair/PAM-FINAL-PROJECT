@@ -1,4 +1,4 @@
-package com.example.pam_1.ui.screens
+package com.example.pam_1.ui.screens.features.auth
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
@@ -16,6 +16,9 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.pam_1.viewmodel.AuthUIState
 import com.example.pam_1.viewmodel.AuthViewModel
+// PENTING: Import Extension Functions
+import com.example.pam_1.navigations.navigateSafe
+
 
 @Composable
 fun NewPasswordScreen(navController: NavController, viewModel: AuthViewModel) {
@@ -31,7 +34,9 @@ fun NewPasswordScreen(navController: NavController, viewModel: AuthViewModel) {
         when (uiState) {
             is AuthUIState.Success -> {
                 Toast.makeText(context, "Password berhasil diubah. Silakan Login.", Toast.LENGTH_LONG).show()
-                navController.navigate("login") {
+
+                // --- PERBAIKAN: Gunakan navigateSafe dengan popUpTo ---
+                navController.navigateSafe("login") {
                     // Membersihkan stack agar user tidak bisa kembali ke halaman ini
                     popUpTo("new_password") { inclusive = true }
                 }
@@ -99,7 +104,7 @@ fun NewPasswordScreen(navController: NavController, viewModel: AuthViewModel) {
             Button(
                 onClick = {
                     var isValid = true
-                    // 1. Validasi format password
+                    // 1. Validasi format password (Asumsi fungsi isValidPassword tersedia/diimport)
                     if (!isValidPassword(newPassword)) {
                         passwordError = true
                         isValid = false

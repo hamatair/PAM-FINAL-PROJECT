@@ -7,7 +7,6 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 // Extension property untuk DataStore
@@ -31,9 +30,4 @@ class DataStoreManager(private val context: Context) {
         .map { preferences ->
             preferences[REMEMBER_ME_KEY] ?: false
         }
-
-    // Membaca status remember me secara synchronous (untuk keperluan tertentu)
-    suspend fun getRememberMe(): Boolean {
-        return context.dataStore.data.first()[REMEMBER_ME_KEY] ?: false
-    }
 }

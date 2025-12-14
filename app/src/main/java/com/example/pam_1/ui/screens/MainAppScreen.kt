@@ -6,124 +6,143 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
+import com.example.pam_1.data.SupabaseClient
+import com.example.pam_1.data.repository.EventRepository
 import com.example.pam_1.navigations.NavigationItem
+import com.example.pam_1.navigations.navigateSafe
 import com.example.pam_1.ui.common.AnimatedBottomNavigationBar
-import com.example.pam_1.ui.theme.PrimaryBrown
+import com.example.pam_1.ui.screens.features.events.EventListScreen
 import com.example.pam_1.viewmodel.AuthViewModel
+import com.example.pam_1.viewmodel.EventViewModel
+import com.example.pam_1.viewmodel.EventViewModelFactory
+import com.example.pam_1.viewmodel.StudyGroupViewModel
 
+// ==========================
+// TOP APP BAR
+// ==========================
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppToolbar(navController: NavController) {
+private fun AppToolbar(navController: NavController) {
     TopAppBar(
-            title = {
-                Text(
-                        text = "PAM App",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = PrimaryBrown
+        title = {
+            Text(
+                text = "PAM App",
+                style = MaterialTheme.typography.titleLarge
+            )
+        },
+        actions = {
+            IconButton(
+                onClick = { navController.navigateSafe("profile") }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = "Profile"
                 )
-            },
-            actions = {
-                IconButton(onClick = { navController.navigate("profile") }) {
-                    Icon(Icons.Filled.Person, contentDescription = "profile", tint = PrimaryBrown)
-                }
-            },
-            colors =
-                    TopAppBarDefaults.topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.background
-                    )
+            }
+        }
     )
 }
 
+// ==========================
+// MAIN APP SCREEN (MERGED)
+// ==========================
 @Composable
-fun MainAppScreen(navController: NavController, viewModel: AuthViewModel) {
-    // state lokal untuk tab saat ini (string route seperti "tugas")
-    var currentTab by remember { mutableStateOf(NavigationItem.Tugas.route) }
+fun MainAppScreen(
+    navController: NavController,
+    authViewModel: AuthViewModel,
+    studyGroupViewModel: StudyGroupViewModel
+) {
+    // --- restore tab terakhir ---
+    val initialTab = authViewModel.lastActiveTab.collectAsState().value
+    var currentTab by remember { mutableStateOf(initialTab) }
 
-    // Jika kamu ingin default tab berubah berdasarkan route root (mis. saat navigate ke home),
-    // kamu bisa membaca navBackStackEntry di sini dan set currentTab sekali.
-    // Tapi sederhana: default = tugas (seperti sebelumnya).
+    LaunchedEffect(currentTab) {
+        authViewModel.setLastActiveTab(currentTab)
+    }
+
+    // --- Event ViewModel (shared di MainApp) ---
+    val eventRepository = remember { EventRepository(SupabaseClient.client) }
+    val eventViewModel: EventViewModel =
+        androidx.lifecycle.viewmodel.compose.viewModel(
+            factory = EventViewModelFactory(eventRepository)
+        )
 
     Scaffold(
-            topBar = { AppToolbar(navController) },
-            bottomBar = {
-                AnimatedBottomNavigationBar(
-                        currentTab = currentTab,
-                        onTabSelected = { selected -> currentTab = selected }
-                )
-            }
+        topBar = { AppToolbar(navController) },
+        bottomBar = {
+            AnimatedBottomNavigationBar(
+                currentTab = currentTab,
+                onTabSelected = { selected -> currentTab = selected }
+            )
+        }
     ) { innerPadding ->
+
         Box(
-                modifier =
-                        Modifier.padding(innerPadding)
-                                .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.background),
-                contentAlignment = Alignment.Center
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background),
+            contentAlignment = Alignment.Center
         ) {
             when (currentTab) {
-                NavigationItem.Tugas.route -> DummyScreen("Halaman Tugas")
-                NavigationItem.Keuangan.route -> DummyScreen("Halaman Keuangan")
-                NavigationItem.Grup.route -> {
-                    // Show Study Groups directly without navigation
-                    // Get StudyGroupViewModel from parent composable
-                    val context = LocalContext.current
-                    val groupRepository = remember {
-                        com.example.pam_1.data.repository.StudyGroupRepository()
-                    }
-                    val memberRepository = remember {
-                        com.example.pam_1.data.repository.GroupMemberRepository()
-                    }
-                    val inviteRepository = remember {
-                        com.example.pam_1.data.repository.GroupInviteRepository()
-                    }
 
-                    val studyGroupViewModel: com.example.pam_1.viewmodel.StudyGroupViewModel =
-                            androidx.lifecycle.viewmodel.compose.viewModel(
-                                    factory =
-                                            com.example.pam_1.viewmodel.StudyGroupViewModelFactory(
-                                                    groupRepository = groupRepository,
-                                                    memberRepository = memberRepository,
-                                                    inviteRepository = inviteRepository
-                                            )
-                            )
+                NavigationItem.Tugas.route ->
+                    DummyScreen("Halaman Tugas")
 
-                    StudyGroupListScreen(navController, studyGroupViewModel)
+                NavigationItem.Keuangan.route ->
+                    DummyScreen("Halaman Keuangan")
+
+                // ================= EVENT TAB =================
+                NavigationItem.Event.route -> {
+                    EventListScreen(
+                        viewModel = eventViewModel,
+                        navController = navController,
+                        onNavigateToAddEvent = {
+                            navController.navigateSafe("add_event")
+                        },
+                        onNavigateToDetail = { eventId ->
+                            navController.navigateSafe("event_detail/$eventId")
+                        }
+                    )
                 }
-                NavigationItem.Catatan.route -> DummyScreen("Halaman Catatan")
-                NavigationItem.Event.route -> DummyScreen("Halaman Event")
-                else -> DummyScreen("Halaman Tugas")
+
+                // ================= GROUP TAB =================
+                NavigationItem.Grup.route -> {
+                    StudyGroupListScreen(
+                        navController = navController,
+                        viewModel = studyGroupViewModel
+                    )
+                }
+
+                NavigationItem.Catatan.route ->
+                    DummyScreen("Halaman Catatan")
+
+                else ->
+                    DummyScreen("Halaman Tugas")
             }
         }
     }
 }
 
-// Komponen Sementara untuk test navigasi
+// ==========================
+// DUMMY SCREEN
+// ==========================
 @Composable
 fun DummyScreen(title: String) {
     Box(
-            modifier =
-                    Modifier.fillMaxSize()
-                            .background(
-                                    MaterialTheme.colorScheme.background
-                            ), // Pastikan background terang (Beige/White)
-            contentAlignment = Alignment.Center
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+        contentAlignment = Alignment.Center
     ) {
         Text(
-                text = title,
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.onBackground
+            text = title,
+            style = MaterialTheme.typography.headlineMedium
         )
     }
 }

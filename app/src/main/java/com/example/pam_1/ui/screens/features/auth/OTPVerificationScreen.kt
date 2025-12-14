@@ -1,4 +1,4 @@
-package com.example.pam_1.ui.screens
+package com.example.pam_1.ui.screens.features.auth
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
@@ -9,11 +9,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.pam_1.viewmodel.AuthUIState
 import com.example.pam_1.viewmodel.AuthViewModel
+// PENTING: Import Extension Functions
+import com.example.pam_1.navigations.navigateSafe
+import com.example.pam_1.navigations.popBackStackSafe
 
 @Composable
 fun OTPVerificationScreen(navController: NavController, viewModel: AuthViewModel) {
@@ -27,7 +29,8 @@ fun OTPVerificationScreen(navController: NavController, viewModel: AuthViewModel
             is AuthUIState.Success -> {
                 Toast.makeText(context, "Verifikasi Berhasil! Silakan login.", Toast.LENGTH_SHORT).show()
                 // Navigasi setelah sukses dari Registrasi
-                navController.navigate("login") {
+                // --- PERBAIKAN 1: Gunakan navigateSafe dengan popUpTo ---
+                navController.navigateSafe("login") {
                     popUpTo("register") { inclusive = true }
                 }
                 viewModel.resetState()
@@ -36,11 +39,12 @@ fun OTPVerificationScreen(navController: NavController, viewModel: AuthViewModel
             // --- PERUBAHAN UTAMA: Handle alur Reset Password ---
             is AuthUIState.AwaitingNewPassword -> {
                 // Setelah OTP reset password sukses, navigasi ke layar input password baru
-                navController.navigate("new_password") {
+                // --- PERBAIKAN 2: Gunakan navigateSafe dengan popUpTo ---
+                navController.navigateSafe("new_password") {
                     // Pastikan semua layar OTP dan Forgot Password dihapus dari back stack
                     popUpTo("forgot_password") { inclusive = true }
                 }
-                viewModel.resetState() // Reset state di sini agar NewPasswordScreen bisa memuat
+                viewModel.resetState()
             }
             // ----------------------------------------------------
 
@@ -142,8 +146,9 @@ fun OTPVerificationScreen(navController: NavController, viewModel: AuthViewModel
         Spacer(Modifier.height(8.dp))
 
         TextButton(
+            // --- PERBAIKAN 3: Gunakan popBackStackSafe ---
             onClick = {
-                navController.popBackStack()
+                navController.popBackStackSafe()
                 viewModel.resetState()
             }
         ) {
