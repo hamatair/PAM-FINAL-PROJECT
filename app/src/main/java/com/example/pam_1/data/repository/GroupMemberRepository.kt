@@ -84,6 +84,21 @@ class GroupMemberRepository {
                                 userId
                             }
 
+                    // Check if already a member to prevent duplicates
+                    val existingMembers =
+                            client.from("group_members")
+                                    .select {
+                                        filter {
+                                            eq("group_id", groupId)
+                                            eq("user_id", actualUserId)
+                                        }
+                                    }
+                                    .decodeList<GroupMember>()
+
+                    if (existingMembers.isNotEmpty()) {
+                        return@withContext Result.success(existingMembers.first())
+                    }
+
                     val newMember = buildJsonObject {
                         put("group_id", groupId)
                         put("user_id", actualUserId)

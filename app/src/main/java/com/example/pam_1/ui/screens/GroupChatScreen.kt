@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -205,13 +206,60 @@ fun GroupChatScreen(navController: NavController, groupId: Long) {
                         reverseLayout = true, // Newest messages at bottom
                         contentPadding = PaddingValues(vertical = 8.dp)
                 ) {
-                    items(
+                    itemsIndexed(
                             items = messages,
-                            key = { message ->
+                            key = { _: Int, message: GroupMessage ->
                                 "${message.id}_${message.createdAt}_${message.senderId}"
                             }
-                    ) { message ->
+                    ) { index: Int, message: GroupMessage ->
                         val isOwnMessage = message.senderId == currentUserId
+
+                        // Calculate grouping logic
+                        // In reverse layout:
+                        // - index is current
+                        // - index + 1 is OLDER (previous in time)
+                        // - index - 1 is NEWER (next in time)
+
+                        val previousMessage = messages.getOrNull(index + 1)
+                        val shouldShowSenderInfo =
+                                if (previousMessage != null) {
+                                    // Show info if sender changed OR time gap > 1 hour
+                                    val isDifferentSender =
+                                            previousMessage.senderId != message.senderId
+                                    val isLongGap =
+                                            try {
+                                                if (message.createdAt != null &&
+                                                                previousMessage.createdAt != null
+                                                ) {
+                                                    val currentInst =
+                                                            java.time.Instant.parse(
+                                                                    message.createdAt
+                                                            )
+                                                    val prevInst =
+                                                            java.time.Instant.parse(
+                                                                    previousMessage.createdAt
+                                                            )
+                                                    java.time.temporal.ChronoUnit.HOURS.between(
+                                                            prevInst,
+                                                            currentInst
+                                                    ) >= 1
+                                                } else false
+                                            } catch (e: Exception) {
+                                                true
+                                            }
+
+                                    isDifferentSender || isLongGap
+                                } else {
+                                    // First message of the chat (or last loaded) always shows info
+                                    true // Wait, in reverse layout, the last item (bottom of list,
+                                    // index 0) is newest.
+                                    // The "Start" of conversation is the LAST index.
+                                    // But usually we show header if previous message (Older) was
+                                    // different.
+                                    // If there is NO older message (index+1 is null), then this is
+                                    // the very first message.
+                                    true
+                                }
 
                         // Get image URL if message has image
                         val imageUrl =
@@ -223,6 +271,7 @@ fun GroupChatScreen(navController: NavController, groupId: Long) {
                                 message = message,
                                 isOwnMessage = isOwnMessage,
                                 imageUrl = imageUrl,
+                                showSenderInfo = shouldShowSenderInfo,
                                 onLongPress = { msg ->
                                     selectedMessage = msg
                                     showMessageMenu = true

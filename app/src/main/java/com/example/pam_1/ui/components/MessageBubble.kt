@@ -29,6 +29,7 @@ fun MessageBubble(
         imageUrl: String? = null,
         onLongPress: (GroupMessage) -> Unit = {},
         onImageClick: (String) -> Unit = {},
+        showSenderInfo: Boolean = true,
         modifier: Modifier = Modifier
 ) {
         val bubbleColor =
@@ -45,8 +46,17 @@ fun MessageBubble(
                         MaterialTheme.colorScheme.onSurfaceVariant
                 }
 
+        val topPadding = if (showSenderInfo) 16.dp else 2.dp
+
         Row(
-                modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                modifier =
+                        modifier.fillMaxWidth()
+                                .padding(
+                                        start = 16.dp,
+                                        end = 16.dp,
+                                        top = topPadding,
+                                        bottom = 2.dp
+                                ),
                 horizontalArrangement = if (isOwnMessage) Arrangement.End else Arrangement.Start
         ) {
                 Column(
@@ -89,17 +99,22 @@ fun MessageBubble(
                                 }
                         }
 
-                        // Display sender username for messages from others
-                        if (!isOwnMessage) {
-                                message.senderUsername?.let { username ->
-                                        Text(
-                                                text = "@$username",
-                                                style = MaterialTheme.typography.labelMedium,
-                                                color = MaterialTheme.colorScheme.primary,
-                                                fontWeight = FontWeight.SemiBold,
-                                                modifier = Modifier.padding(bottom = 4.dp)
-                                        )
-                                }
+                        // Display sender name for messages from others
+                        if (!isOwnMessage && showSenderInfo) {
+                                val displayName =
+                                        message.senderFullName
+                                                ?: message.senderUsername
+                                                        ?: message.senderId.take(
+                                                        8
+                                                ) // Fallback to sender ID
+
+                                Text(
+                                        text = displayName,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.SemiBold,
+                                        modifier = Modifier.padding(bottom = 4.dp)
+                                )
                         }
 
                         // Image (if message contains image)
