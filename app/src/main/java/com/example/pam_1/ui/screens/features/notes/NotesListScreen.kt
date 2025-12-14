@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.PushPin
@@ -24,6 +25,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pam_1.data.model.Note
+import com.example.pam_1.ui.theme.BackgroundBeige
+import com.example.pam_1.ui.theme.PrimaryBrown
+import com.example.pam_1.ui.theme.White
 import com.example.pam_1.viewmodel.NoteViewModel
 import com.example.pam_1.viewmodel.UiState
 import kotlinx.coroutines.launch
@@ -46,14 +50,13 @@ fun NotesListScreen(
     val scope = rememberCoroutineScope()
 
     Scaffold(
+        containerColor = BackgroundBeige,
         floatingActionButton = {
             FloatingActionButton(
                 onClick = onAddNote,
-                containerColor = Color(0xFFA56A3A),
-                contentColor = Color.White
-            ) {
-                Text("+", fontSize = 28.sp)
-            }
+                containerColor = PrimaryBrown,
+                contentColor = White
+            ) { Icon(Icons.Default.Add, "Tambah") }
         }
     ) { innerPadding ->
 

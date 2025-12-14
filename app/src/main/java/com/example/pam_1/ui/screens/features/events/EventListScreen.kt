@@ -102,10 +102,6 @@ fun EventListScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        // --- PERBAIKAN 1: Gunakan navigateSafe ---
-                        IconButton(onClick = { navController.navigateSafe("my_events") }) {
-                            Icon(Icons.Filled.Event, "My Events", tint = PrimaryBrown)
-                        }
                         Text(
                             text = "Event Aktif",
                             style = MaterialTheme.typography.headlineLarge,
@@ -113,10 +109,6 @@ fun EventListScreen(
                             textAlign = TextAlign.Center,
                             modifier = Modifier.weight(1f)
                         )
-                        // --- PERBAIKAN 2: Gunakan navigateSafe ---
-                        IconButton(onClick = { navController.navigateSafe("profile") }) {
-                            Icon(Icons.Filled.Person, "Profile", tint = PrimaryBrown)
-                        }
                     }
                 }
 

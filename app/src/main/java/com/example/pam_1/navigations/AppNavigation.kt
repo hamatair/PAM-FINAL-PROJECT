@@ -18,9 +18,18 @@ import com.example.pam_1.data.repository.AuthRepository
 import com.example.pam_1.data.repository.EventRepository
 import com.example.pam_1.data.repository.NoteRepository
 import com.example.pam_1.data.repository.UserRepository
+import com.example.pam_1.data.repository.*
 import com.example.pam_1.ui.screens.*
 import com.example.pam_1.ui.screens.features.auth.*
 import com.example.pam_1.ui.screens.features.events.*
+import com.example.pam_1.ui.screens.features.group_chat.CreateEditGroupScreen
+import com.example.pam_1.ui.screens.features.group_chat.GroupChatScreen
+import com.example.pam_1.ui.screens.features.group_chat.GroupDetailScreen
+import com.example.pam_1.ui.screens.features.group_chat.InviteManagementScreen
+import com.example.pam_1.ui.screens.features.group_chat.JoinGroupScreen
+import com.example.pam_1.ui.screens.features.group_chat.StudyGroupListScreen
+import com.example.pam_1.ui.screens.features.tugas.TugasScreen
+import com.example.pam_1.viewmodel.*
 import com.example.pam_1.ui.screens.features.notes.AddEditNoteScreen
 import com.example.pam_1.ui.screens.features.notes.ReadNoteScreen
 import com.example.pam_1.viewmodel.AuthViewModel
@@ -37,11 +46,12 @@ fun AppNavigation() {
     val navController = rememberNavController()
     val context = LocalContext.current
 
-    // Repository Setup
+    // ===============================
+    // AUTH SETUP
+    // ===============================
     val authRepository = remember { AuthRepository(context) }
     val userRepository = remember { UserRepository() }
 
-    // Auth ViewModel Setup
     val authViewModel: AuthViewModel = viewModel(
         factory = AuthViewModelFactory(
             authRepository = authRepository,
@@ -49,7 +59,9 @@ fun AppNavigation() {
         )
     )
 
-    // Factory Event
+    // ===============================
+    // EVENT SETUP
+    // ===============================
     val eventRepository = remember { EventRepository(SupabaseClient.client) }
     val eventViewModelFactory = remember { EventViewModelFactory(eventRepository) }
 
@@ -59,43 +71,81 @@ fun AppNavigation() {
     val sharedNoteViewModel: NoteViewModel = viewModel(factory = noteViewModelFactory)
 
 
+    // ===============================
+    // STUDY GROUP SETUP
+    // ===============================
+    val groupRepository = remember { StudyGroupRepository() }
+    val memberRepository = remember { GroupMemberRepository() }
+    val inviteRepository = remember { GroupInviteRepository() }
+
+    val studyGroupViewModel: StudyGroupViewModel = viewModel(
+        factory = StudyGroupViewModelFactory(
+            groupRepository = groupRepository,
+            memberRepository = memberRepository,
+            inviteRepository = inviteRepository
+        )
+    )
+
+    // ===============================
+    // NAVIGATION GRAPH
+    // ===============================
     NavHost(
         navController = navController,
         startDestination = "splash"
     ) {
-        // --- AUTH SECTION ---
-        composable("splash") { SplashScreen(navController, authRepository) }
-        composable("login") { LoginScreen(navController, authViewModel) }
-        composable("register") { RegisterScreen(navController, authViewModel) }
-        composable("otp_verification") { OTPVerificationScreen(navController, authViewModel) }
-        composable("forgot_password") { ForgotPasswordScreen(navController, authViewModel) }
-        composable("new_password") { NewPasswordScreen(navController, authViewModel) }
-        composable("profile") { ProfileScreen(navController, authViewModel) }
 
-        // --- MAIN FEATURES ---
+        // ---------- AUTH ----------
+        composable("splash") {
+            SplashScreen(navController, authRepository)
+        }
+        composable("login") {
+            LoginScreen(navController, authViewModel)
+        }
+        composable("register") {
+            RegisterScreen(navController, authViewModel)
+        }
+        composable("otp_verification") {
+            OTPVerificationScreen(navController, authViewModel)
+        }
+        composable("forgot_password") {
+            ForgotPasswordScreen(navController, authViewModel)
+        }
+        composable("new_password") {
+            NewPasswordScreen(navController, authViewModel)
+        }
+        composable("profile") {
+            ProfileScreen(navController, authViewModel)
+        }
 
-        // 1. HOME
+        // ---------- HOME ----------
         composable("home") {
             MainAppScreen(
                 navController = navController,
+                authViewModel = authViewModel,
+                studyGroupViewModel = studyGroupViewModel,
                 viewModel = authViewModel,
                 noteViewModel = sharedNoteViewModel
             )
         }
 
-        // 2. ADD EVENT
+
+        // ---------- EVENT ----------
         composable("add_event") {
-            val eventViewModel: EventViewModel = viewModel(factory = eventViewModelFactory)
+            val eventViewModel: EventViewModel =
+                viewModel(factory = eventViewModelFactory)
+
             AddEventScreen(
                 viewModel = eventViewModel,
                 onNavigateBack = { navController.popBackStackSafe() }
             )
         }
 
-        // 3. MY EVENTS
         composable("my_events") {
-            val eventViewModel: EventViewModel = viewModel(factory = eventViewModelFactory)
-            val currentUserId = SupabaseClient.client.auth.currentUserOrNull()?.id ?: ""
+            val eventViewModel: EventViewModel =
+                viewModel(factory = eventViewModelFactory)
+
+            val currentUserId =
+                SupabaseClient.client.auth.currentUserOrNull()?.id ?: ""
 
             MyEventsScreen(
                 viewModel = eventViewModel,
@@ -107,13 +157,13 @@ fun AppNavigation() {
             )
         }
 
-        // 4. EVENT DETAIL
         composable(
             route = "event_detail/{eventId}",
             arguments = listOf(navArgument("eventId") { type = NavType.StringType })
         ) { backStackEntry ->
             val eventId = backStackEntry.arguments?.getString("eventId") ?: ""
-            val eventViewModel: EventViewModel = viewModel(factory = eventViewModelFactory)
+            val eventViewModel: EventViewModel =
+                viewModel(factory = eventViewModelFactory)
 
             DetailEventScreen(
                 eventId = eventId,
@@ -122,9 +172,74 @@ fun AppNavigation() {
             )
         }
 
+        // ---------- STUDY GROUP ----------
+        composable("study_groups") {
+            StudyGroupListScreen(navController, studyGroupViewModel)
+        }
+
+        composable("create_group") {
+            CreateEditGroupScreen(navController, studyGroupViewModel)
+        }
+
+        composable(
+            route = "edit_group/{groupId}",
+            arguments = listOf(navArgument("groupId") { type = NavType.LongType })
+        ) { backStackEntry ->
+            val groupId = backStackEntry.arguments?.getLong("groupId")
+            groupId?.let {
+                CreateEditGroupScreen(navController, studyGroupViewModel, it)
+            }
+        }
+
+        composable(
+            route = "group_detail/{groupId}",
+            arguments = listOf(navArgument("groupId") { type = NavType.LongType })
+        ) { backStackEntry ->
+            val groupId = backStackEntry.arguments?.getLong("groupId")
+            groupId?.let {
+                GroupDetailScreen(navController, studyGroupViewModel, it)
+            }
+        }
+
+        composable(
+            route = "manage_invites/{groupId}",
+            arguments = listOf(navArgument("groupId") { type = NavType.LongType })
+        ) { backStackEntry ->
+            val groupId = backStackEntry.arguments?.getLong("groupId")
+            groupId?.let {
+                InviteManagementScreen(navController, studyGroupViewModel, it)
+            }
+        }
+
+        composable(
+            route = "group_chat/{groupId}",
+            arguments = listOf(navArgument("groupId") { type = NavType.LongType })
+        ) { backStackEntry ->
+            val groupId = backStackEntry.arguments?.getLong("groupId")
+            groupId?.let {
+                GroupChatScreen(navController, it)
+            }
+        }
+
+        composable("join_group") {
+            JoinGroupScreen(navController, studyGroupViewModel)
+        }
+
+        // ---------- TUGAS ----------
+        composable("task_schedule") {
+            // PERBAIKAN DISINI: Gunakan Factory + Repository
+            val tugasRepository = remember { TugasRepository() }
+            val tugasViewModel: TugasViewModel = viewModel(
+                factory = TugasViewModelFactory(tugasRepository)
+            )
+
+            TugasScreen(
+                viewModel = tugasViewModel
+            )
+        }
+
         // ================= NOTES =================
 
-        // ---------- READ NOTE ----------
         composable(
             route = "note/read/{noteId}",
             arguments = listOf(navArgument("noteId") { type = NavType.LongType })
@@ -169,7 +284,6 @@ fun AppNavigation() {
             }
         }
 
-        // ---------- ADD NOTE ----------
         composable("note/add") {
             val noteViewModel = sharedNoteViewModel
             val actionState by noteViewModel.actionState.collectAsState()
@@ -213,7 +327,6 @@ fun AppNavigation() {
             )
         }
 
-        // ---------- EDIT NOTE ----------
         composable(
             route = "note/edit/{noteId}",
             arguments = listOf(navArgument("noteId") { type = NavType.LongType })

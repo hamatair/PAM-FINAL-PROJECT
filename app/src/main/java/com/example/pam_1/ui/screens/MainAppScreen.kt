@@ -4,9 +4,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -15,57 +15,89 @@ import androidx.navigation.NavController
 import com.example.pam_1.data.SupabaseClient
 import com.example.pam_1.data.repository.EventRepository
 import com.example.pam_1.data.repository.NoteRepository
+import com.example.pam_1.data.repository.TugasRepository // IMPORT INI
 import com.example.pam_1.navigations.NavigationItem
 // PENTING: Import extension function navigateSafe yang sudah dibuat
 import com.example.pam_1.navigations.navigateSafe
 import com.example.pam_1.ui.common.AnimatedBottomNavigationBar
 import com.example.pam_1.ui.screens.features.events.EventListScreen
 import com.example.pam_1.ui.screens.features.notes.NotesListScreen
+import com.example.pam_1.ui.screens.features.group_chat.StudyGroupListScreen
+import com.example.pam_1.ui.screens.features.tugas.TugasScreen
 import com.example.pam_1.viewmodel.AuthViewModel
 import com.example.pam_1.viewmodel.EventViewModel
 import com.example.pam_1.viewmodel.EventViewModelFactory
 import com.example.pam_1.viewmodel.NoteViewModel
 import com.example.pam_1.viewmodel.NoteViewModelFactory
+import com.example.pam_1.viewmodel.StudyGroupViewModel
+import com.example.pam_1.viewmodel.TugasViewModel
+import com.example.pam_1.viewmodel.TugasViewModelFactory // IMPORT INI
 
+// ==========================
+// TOP APP BAR
+// ==========================
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AppToolbar(navController: NavController) {
+    TopAppBar(
+        title = {
+            Text(
+                text = "PAM App",
+                style = MaterialTheme.typography.titleLarge
+            )
+        },
+        actions = {
+            IconButton(
+                onClick = { navController.navigateSafe("profile") }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = "Profile"
+                )
+            }
+        }
+    )
+}
+
+// ==========================
+// MAIN APP SCREEN (MERGED)
+// ==========================
 @Composable
 fun MainAppScreen(
     navController: NavController,
     viewModel: AuthViewModel,
-    noteViewModel: NoteViewModel
+    noteViewModel: NoteViewModel,
+    authViewModel: AuthViewModel,
+    studyGroupViewModel: StudyGroupViewModel
 ) {
-    // --- State Management untuk Tab Aktif ---
-    val initialTab = viewModel.lastActiveTab.collectAsState().value
+    // --- restore tab terakhir ---
+    val initialTab = authViewModel.lastActiveTab.collectAsState().value
     var currentTab by remember { mutableStateOf(initialTab) }
 
     LaunchedEffect(currentTab) {
-        viewModel.setLastActiveTab(currentTab)
+        authViewModel.setLastActiveTab(currentTab)
 
         if (currentTab == NavigationItem.Catatan.route) {
             noteViewModel.loadNotes()
         }
     }
 
-    // Inisialisasi ViewModel untuk Event di dalam MainApp
+    // --- Event ViewModel (shared di MainApp) ---
     val eventRepository = remember { EventRepository(SupabaseClient.client) }
     val eventViewModel: EventViewModel = viewModel(
         factory = EventViewModelFactory(eventRepository)
     )
-//    val noteRepository = remember { NoteRepository(SupabaseClient.client) }
-//    val noteViewModel: NoteViewModel = viewModel(
-//        factory = NoteViewModelFactory(noteRepository)
-//    )
-
 
     Scaffold(
+        topBar = { AppToolbar(navController) },
         bottomBar = {
             AnimatedBottomNavigationBar(
                 currentTab = currentTab,
-                onTabSelected = { selected ->
-                    currentTab = selected
-                }
+                onTabSelected = { selected -> currentTab = selected }
             )
         }
     ) { innerPadding ->
+
         Box(
             modifier = Modifier
                 .padding(innerPadding)
@@ -74,12 +106,50 @@ fun MainAppScreen(
             contentAlignment = Alignment.Center
         ) {
             when (currentTab) {
-                NavigationItem.Tugas.route -> DummyScreen("Halaman Tugas")
-                NavigationItem.Keuangan.route -> DummyScreen("Halaman Keuangan")
-                NavigationItem.Grup.route -> DummyScreen("Halaman Grup")
+                // ================= TUGAS TAB =================
+                NavigationItem.Tugas.route -> {
+                    // PERBAIKAN DISINI: Gunakan Factory untuk TugasViewModel
+                    val tugasRepository = remember { TugasRepository() }
+                    val tugasViewModel: TugasViewModel = viewModel(
+                        factory = TugasViewModelFactory(tugasRepository)
+                    )
+
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.TopStart
+                    ) {
+                        TugasScreen(viewModel = tugasViewModel)
+                    }
+                }
+
+                NavigationItem.Keuangan.route ->
+                    DummyScreen("Halaman Keuangan")
+
+                // ================= EVENT TAB =================
+                NavigationItem.Event.route -> {
+                    EventListScreen(
+                        viewModel = eventViewModel,
+                        navController = navController,
+                        onNavigateToAddEvent = {
+                            navController.navigateSafe("add_event")
+                        },
+                        onNavigateToDetail = { eventId ->
+                            navController.navigateSafe("event_detail/$eventId")
+                        }
+                    )
+                }
+
+                // ================= GROUP TAB =================
+                NavigationItem.Grup.route -> {
+                    StudyGroupListScreen(
+                        navController = navController,
+                        viewModel = studyGroupViewModel
+                    )
+                }
+
                 NavigationItem.Catatan.route -> {
                     NotesListScreen(
-                        viewModel = noteViewModel, // Gunakan parameter yang dikirim
+                        viewModel = noteViewModel, // Menggunakan Shared ViewModel
                         onAddNote = {
                             navController.navigateSafe("note/add")
                         },
@@ -89,32 +159,16 @@ fun MainAppScreen(
                     )
                 }
 
-                // --- TAB EVENT ---
-                NavigationItem.Event.route -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopStart) {
-                        EventListScreen(
-                            viewModel = eventViewModel,
-                            navController = navController,
-
-                            // UBAH DISINI: Gunakan navigateSafe untuk mencegah double click
-                            onNavigateToAddEvent = {
-                                navController.navigateSafe("add_event")
-                            },
-
-                            // UBAH DISINI: Gunakan navigateSafe
-                            onNavigateToDetail = { eventId ->
-                                navController.navigateSafe("event_detail/$eventId")
-                            },
-                        )
-                    }
-                }
-                else -> DummyScreen("Halaman Tugas")
+                else ->
+                    DummyScreen("Halaman Tugas")
             }
         }
     }
 }
 
-// Komponen Dummy (Tetap sama)
+// ==========================
+// DUMMY SCREEN
+// ==========================
 @Composable
 fun DummyScreen(title: String) {
     Box(
@@ -125,8 +179,7 @@ fun DummyScreen(title: String) {
     ) {
         Text(
             text = title,
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onBackground
+            style = MaterialTheme.typography.headlineMedium
         )
     }
 }
