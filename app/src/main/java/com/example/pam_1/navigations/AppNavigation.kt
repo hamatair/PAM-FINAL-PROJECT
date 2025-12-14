@@ -1,6 +1,10 @@
 package com.example.pam_1.navigations
 
+import android.util.Log
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -10,6 +14,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.pam_1.data.SupabaseClient
+import com.example.pam_1.data.repository.AuthRepository
+import com.example.pam_1.data.repository.EventRepository
+import com.example.pam_1.data.repository.NoteRepository
+import com.example.pam_1.data.repository.UserRepository
 import com.example.pam_1.data.repository.*
 import com.example.pam_1.ui.screens.*
 import com.example.pam_1.ui.screens.features.auth.*
@@ -22,6 +30,15 @@ import com.example.pam_1.ui.screens.features.group_chat.JoinGroupScreen
 import com.example.pam_1.ui.screens.features.group_chat.StudyGroupListScreen
 import com.example.pam_1.ui.screens.features.tugas.TugasScreen
 import com.example.pam_1.viewmodel.*
+import com.example.pam_1.ui.screens.features.notes.AddEditNoteScreen
+import com.example.pam_1.ui.screens.features.notes.ReadNoteScreen
+import com.example.pam_1.viewmodel.AuthViewModel
+import com.example.pam_1.viewmodel.AuthViewModelFactory
+import com.example.pam_1.viewmodel.EventViewModel
+import com.example.pam_1.viewmodel.EventViewModelFactory
+import com.example.pam_1.viewmodel.NoteViewModel
+import com.example.pam_1.viewmodel.NoteViewModelFactory
+import com.example.pam_1.viewmodel.UiState
 import io.github.jan.supabase.auth.auth
 
 @Composable
@@ -47,6 +64,12 @@ fun AppNavigation() {
     // ===============================
     val eventRepository = remember { EventRepository(SupabaseClient.client) }
     val eventViewModelFactory = remember { EventViewModelFactory(eventRepository) }
+
+    // Factory Note & Shared ViewModel
+    val noteRepository = remember { NoteRepository(SupabaseClient.client) }
+    val noteViewModelFactory = remember { NoteViewModelFactory(noteRepository) }
+    val sharedNoteViewModel: NoteViewModel = viewModel(factory = noteViewModelFactory)
+
 
     // ===============================
     // STUDY GROUP SETUP
@@ -99,7 +122,9 @@ fun AppNavigation() {
             MainAppScreen(
                 navController = navController,
                 authViewModel = authViewModel,
-                studyGroupViewModel = studyGroupViewModel
+                studyGroupViewModel = studyGroupViewModel,
+                viewModel = authViewModel,
+                noteViewModel = sharedNoteViewModel
             )
         }
 
@@ -211,6 +236,139 @@ fun AppNavigation() {
             TugasScreen(
                 viewModel = tugasViewModel
             )
+        }
+
+        // ================= NOTES =================
+
+        composable(
+            route = "note/read/{noteId}",
+            arguments = listOf(navArgument("noteId") { type = NavType.LongType })
+        ) { backStackEntry ->
+            val noteId = backStackEntry.arguments!!.getLong("noteId")
+
+            // Gunakan sharedNoteViewModel
+            val noteViewModel = sharedNoteViewModel
+
+            val noteState by noteViewModel.noteDetailState.collectAsState()
+            val actionState by noteViewModel.actionState.collectAsState()
+
+            LaunchedEffect(noteId) {
+                noteViewModel.loadNoteDetail(noteId)
+            }
+
+            // Listener Action (Hapus)
+            LaunchedEffect(actionState) {
+                if (actionState is UiState.Success) {
+                    val msg = (actionState as UiState.Success).data
+                    if (msg.contains("dihapus", ignoreCase = true)) {
+                        noteViewModel.resetActionState()
+                        navController.popBackStackSafe()
+                    }
+                }
+            }
+
+            if (noteState is UiState.Success) {
+                val note = (noteState as UiState.Success).data
+                if (note != null) {
+                    ReadNoteScreen(
+                        note = note,
+                        onBack = { navController.popBackStackSafe() },
+                        onEditNote = { id -> navController.navigateSafe("note/edit/$id") },
+                        // FIX: Gunakan updatePinStatus agar lebih aman & ringan
+                        onPinToggle = { pinned ->
+                            noteViewModel.updatePinStatus(note.id!!, pinned)
+                        },
+                        onDelete = { id -> noteViewModel.deleteNote(id) }
+                    )
+                }
+            }
+        }
+
+        composable("note/add") {
+            val noteViewModel = sharedNoteViewModel
+            val actionState by noteViewModel.actionState.collectAsState()
+            val context = LocalContext.current
+
+            // Listener: SUKSES
+            LaunchedEffect(actionState) {
+                if (actionState is UiState.Success) {
+                    android.widget.Toast.makeText(context, "Berhasil Simpan!", android.widget.Toast.LENGTH_SHORT).show()
+                    noteViewModel.loadNotes()
+                    noteViewModel.resetActionState()
+                    navController.popBackStackSafe()
+                }
+            }
+
+            // Listener: ERROR
+            LaunchedEffect(actionState) {
+                if (actionState is UiState.Error) {
+                    val errorMsg = (actionState as UiState.Error).message
+                    Log.e("DEBUG_NAV", "UI State Error: $errorMsg")
+                    android.widget.Toast.makeText(context, errorMsg, android.widget.Toast.LENGTH_LONG).show()
+                }
+            }
+
+            AddEditNoteScreen(
+                note = null,
+                onBack = { navController.popBackStackSafe() },
+                // FIX: Menambahkan parameter imageBytes
+                onSave = { title, description, isPinned, imageBytes ->
+                    if (title.isBlank()) {
+                        android.widget.Toast.makeText(context, "Judul tidak boleh kosong", android.widget.Toast.LENGTH_SHORT).show()
+                    } else {
+                        noteViewModel.addNote(
+                            title = title,
+                            description = description,
+                            isPinned = isPinned,
+                            imageBytes = imageBytes // Kirim byte gambar ke ViewModel
+                        )
+                    }
+                }
+            )
+        }
+
+        composable(
+            route = "note/edit/{noteId}",
+            arguments = listOf(navArgument("noteId") { type = NavType.LongType })
+        ) { backStackEntry ->
+            val noteId = backStackEntry.arguments!!.getLong("noteId")
+            val noteViewModel = sharedNoteViewModel
+
+            val noteState = noteViewModel.noteDetailState.collectAsState()
+            val actionState by noteViewModel.actionState.collectAsState()
+
+            LaunchedEffect(noteId) { noteViewModel.loadNoteDetail(noteId) }
+
+            // Jika Update Berhasil -> Refresh List -> Kembali
+            LaunchedEffect(actionState) {
+                if (actionState is UiState.Success) {
+                    noteViewModel.loadNotes()
+                    noteViewModel.resetActionState()
+                    navController.popBackStackSafe()
+                }
+            }
+
+            if (noteState.value is UiState.Success) {
+                val note = (noteState.value as UiState.Success).data ?: return@composable
+                AddEditNoteScreen(
+                    note = note,
+                    onBack = {
+                        noteViewModel.clearNoteDetail()
+                        navController.popBackStackSafe()
+                    },
+                    // FIX: Menambahkan parameter imageBytes
+                    onSave = { title, desc, pinned, imageBytes ->
+                        noteViewModel.updateNote(
+                            noteId = noteId,
+                            title = title,
+                            description = desc,
+                            isPinned = pinned,
+                            imageBytes = imageBytes, // Kirim byte gambar baru (jika ada)
+                            currentImageUrl = note.imageUrl
+                        )
+                    }
+                )
+            }
         }
     }
 }

@@ -28,6 +28,7 @@ composeTesting = "1.0.0-alpha09"
 toolsCore = "1.0.0-alpha13"
 uiGraphics = "1.10.0"
 roomCommonJvm = "2.8.4"
+runtime = "1.10.0"
 
 
 [libraries]
@@ -85,6 +86,7 @@ androidx-compose-testing = { group = "androidx.xr.compose", name = "compose-test
 androidx-tools-core = { group = "androidx.privacysandbox.tools", name = "tools-core", version.ref = "toolsCore" }
 androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics", version.ref = "uiGraphics" }
 androidx-room-common-jvm = { group = "androidx.room", name = "room-common-jvm", version.ref = "roomCommonJvm" }
+androidx-compose-runtime = { group = "androidx.compose.runtime", name = "runtime", version.ref = "runtime" }
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }

@@ -14,16 +14,21 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.pam_1.data.SupabaseClient
 import com.example.pam_1.data.repository.EventRepository
+import com.example.pam_1.data.repository.NoteRepository
 import com.example.pam_1.data.repository.TugasRepository // IMPORT INI
 import com.example.pam_1.navigations.NavigationItem
+// PENTING: Import extension function navigateSafe yang sudah dibuat
 import com.example.pam_1.navigations.navigateSafe
 import com.example.pam_1.ui.common.AnimatedBottomNavigationBar
 import com.example.pam_1.ui.screens.features.events.EventListScreen
+import com.example.pam_1.ui.screens.features.notes.NotesListScreen
 import com.example.pam_1.ui.screens.features.group_chat.StudyGroupListScreen
 import com.example.pam_1.ui.screens.features.tugas.TugasScreen
 import com.example.pam_1.viewmodel.AuthViewModel
 import com.example.pam_1.viewmodel.EventViewModel
 import com.example.pam_1.viewmodel.EventViewModelFactory
+import com.example.pam_1.viewmodel.NoteViewModel
+import com.example.pam_1.viewmodel.NoteViewModelFactory
 import com.example.pam_1.viewmodel.StudyGroupViewModel
 import com.example.pam_1.viewmodel.TugasViewModel
 import com.example.pam_1.viewmodel.TugasViewModelFactory // IMPORT INI
@@ -60,6 +65,8 @@ private fun AppToolbar(navController: NavController) {
 @Composable
 fun MainAppScreen(
     navController: NavController,
+    viewModel: AuthViewModel,
+    noteViewModel: NoteViewModel,
     authViewModel: AuthViewModel,
     studyGroupViewModel: StudyGroupViewModel
 ) {
@@ -69,6 +76,10 @@ fun MainAppScreen(
 
     LaunchedEffect(currentTab) {
         authViewModel.setLastActiveTab(currentTab)
+
+        if (currentTab == NavigationItem.Catatan.route) {
+            noteViewModel.loadNotes()
+        }
     }
 
     // --- Event ViewModel (shared di MainApp) ---
@@ -136,8 +147,17 @@ fun MainAppScreen(
                     )
                 }
 
-                NavigationItem.Catatan.route ->
-                    DummyScreen("Halaman Catatan")
+                NavigationItem.Catatan.route -> {
+                    NotesListScreen(
+                        viewModel = noteViewModel, // Menggunakan Shared ViewModel
+                        onAddNote = {
+                            navController.navigateSafe("note/add")
+                        },
+                        onNoteClick = { noteId ->
+                            navController.navigateSafe("note/read/$noteId")
+                        }
+                    )
+                }
 
                 else ->
                     DummyScreen("Halaman Tugas")
