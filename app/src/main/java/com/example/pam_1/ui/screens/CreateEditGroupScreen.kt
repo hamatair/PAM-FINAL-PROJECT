@@ -54,7 +54,8 @@ fun CreateEditGroupScreen(
             is StudyGroupUIState.Success -> {
                 Toast.makeText(context, uiState.message, Toast.LENGTH_SHORT).show()
                 viewModel.resetState()
-                navController.popBackStack()
+                // Navigate back to study groups list
+                navController.popBackStack(route = "study_groups", inclusive = false)
             }
             is StudyGroupUIState.Error -> {
                 Toast.makeText(context, uiState.message, Toast.LENGTH_SHORT).show()

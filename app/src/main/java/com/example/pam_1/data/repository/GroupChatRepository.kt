@@ -8,7 +8,6 @@ import com.example.pam_1.data.model.MessageAttachment
 import com.example.pam_1.utils.ImageCompressor
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
-import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
 import io.github.jan.supabase.realtime.PostgresAction
 import io.github.jan.supabase.realtime.channel
@@ -63,43 +62,13 @@ class GroupChatRepository(private val context: Context) {
                 try {
                     val messages =
                             client.from("group_messages")
-                                    .select(columns = Columns.raw("*,users:sender_id(username)")) {
+                                    .select {
                                         filter { eq("group_id", groupId) }
                                         order("created_at", Order.DESCENDING)
                                         limit(limit.toLong())
                                         range(offset.toLong() until (offset + limit).toLong())
                                     }
-                                    .decodeList<JsonObject>()
-                                    .map { json ->
-                                        // Parse message fields
-                                        GroupMessage(
-                                                id = json["id"]?.jsonPrimitive?.longOrNull,
-                                                groupId =
-                                                        json["group_id"]?.jsonPrimitive?.longOrNull
-                                                                ?: 0L,
-                                                senderId = json["sender_id"]?.jsonPrimitive?.content
-                                                                ?: "",
-                                                content = json["content"]?.jsonPrimitive?.content,
-                                                messageType =
-                                                        json["message_type"]?.jsonPrimitive?.content
-                                                                ?: "text",
-                                                replyTo =
-                                                        json["reply_to"]?.jsonPrimitive?.longOrNull,
-                                                isEdited =
-                                                        json["is_edited"]
-                                                                ?.jsonPrimitive
-                                                                ?.booleanOrNull
-                                                                ?: false,
-                                                createdAt =
-                                                        json["created_at"]?.jsonPrimitive?.content,
-                                                updatedAt =
-                                                        json["updated_at"]?.jsonPrimitive?.content,
-                                                senderUsername =
-                                                        json["users"]?.jsonObject?.get("username")
-                                                                ?.jsonPrimitive
-                                                                ?.content
-                                        )
-                                    }
+                                    .decodeList<GroupMessage>()
 
                     Result.success(messages)
                 } catch (e: Exception) {

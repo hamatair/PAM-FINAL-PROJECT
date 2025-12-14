@@ -63,11 +63,15 @@ class GroupChatViewModel(context: Context) : ViewModel() {
                     .onSuccess { newMessages ->
                         if (loadMore) {
                             messages.addAll(newMessages)
+                            // Remove duplicates based on message ID
+                            val uniqueMessages = messages.distinctBy { it.id }
+                            messages.clear()
+                            messages.addAll(uniqueMessages)
                             hasMoreMessages = newMessages.size == 50
                             isLoadingMore = false
                         } else {
                             messages.clear()
-                            messages.addAll(newMessages)
+                            messages.addAll(newMessages.distinctBy { it.id })
                             hasMoreMessages = newMessages.size == 50
                             uiState = ChatUIState.Idle
                         }
@@ -116,7 +120,8 @@ class GroupChatViewModel(context: Context) : ViewModel() {
                     .sendMessage(groupId, content.trim(), replyTo)
                     .onSuccess {
                         uiState = ChatUIState.Idle
-                        // Message will appear via realtime subscription
+                        // Reload messages to show the new message immediately
+                        loadMessages(groupId, loadMore = false)
                     }
                     .onFailure { error ->
                         uiState = ChatUIState.Error(error.message ?: "Failed to send message")
@@ -138,7 +143,8 @@ class GroupChatViewModel(context: Context) : ViewModel() {
                     .sendImageMessage(groupId, imageUri, caption, replyTo)
                     .onSuccess {
                         uiState = ChatUIState.Idle
-                        // Message will appear via realtime subscription
+                        // Reload messages to show the new image immediately
+                        loadMessages(groupId, loadMore = false)
                     }
                     .onFailure { error ->
                         uiState = ChatUIState.Error(error.message ?: "Failed to send image")

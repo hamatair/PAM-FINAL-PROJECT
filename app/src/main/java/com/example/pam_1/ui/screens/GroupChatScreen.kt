@@ -205,7 +205,12 @@ fun GroupChatScreen(navController: NavController, groupId: Long) {
                         reverseLayout = true, // Newest messages at bottom
                         contentPadding = PaddingValues(vertical = 8.dp)
                 ) {
-                    items(messages, key = { it.id ?: 0 }) { message ->
+                    items(
+                            items = messages,
+                            key = { message ->
+                                "${message.id}_${message.createdAt}_${message.senderId}"
+                            }
+                    ) { message ->
                         val isOwnMessage = message.senderId == currentUserId
 
                         // Get image URL if message has image

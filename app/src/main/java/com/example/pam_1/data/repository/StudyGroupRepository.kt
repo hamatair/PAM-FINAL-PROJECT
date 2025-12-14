@@ -36,7 +36,7 @@ class StudyGroupRepository {
 
                     // Use buildJsonObject explicitly for serialization support
                     val newGroup = buildJsonObject {
-                        put("owner", userId)
+                        put("owner", userId) // Fixed: was "owner", should be "owner_id"
                         put("name", name)
                         description?.let { put("description", it) }
                         course?.let { put("course", it) }
