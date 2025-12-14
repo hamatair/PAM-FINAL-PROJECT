@@ -11,8 +11,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -20,24 +32,32 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.pam_1.data.SupabaseClient
 import com.example.pam_1.data.repository.EventRepository
-import com.example.pam_1.data.repository.NoteRepository
-import com.example.pam_1.data.repository.TugasRepository // IMPORT INI
+import com.example.pam_1.data.repository.TugasRepository
 import com.example.pam_1.navigations.NavigationItem
-// PENTING: Import extension function navigateSafe yang sudah dibuat
 import com.example.pam_1.navigations.navigateSafe
 import com.example.pam_1.ui.common.AnimatedBottomNavigationBar
 import com.example.pam_1.ui.screens.features.events.EventListScreen
-import com.example.pam_1.ui.screens.features.notes.NotesListScreen
 import com.example.pam_1.ui.screens.features.group_chat.StudyGroupListScreen
+import com.example.pam_1.ui.screens.features.notes.NotesListScreen
 import com.example.pam_1.ui.screens.features.tugas.TugasScreen
 import com.example.pam_1.viewmodel.AuthViewModel
 import com.example.pam_1.viewmodel.EventViewModel
 import com.example.pam_1.viewmodel.EventViewModelFactory
 import com.example.pam_1.viewmodel.NoteViewModel
-import com.example.pam_1.viewmodel.NoteViewModelFactory
 import com.example.pam_1.viewmodel.StudyGroupViewModel
 import com.example.pam_1.viewmodel.TugasViewModel
-import com.example.pam_1.viewmodel.TugasViewModelFactory // IMPORT INI
+import com.example.pam_1.viewmodel.TugasViewModelFactory
+
+// accompanist pager
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.ExperimentalFoundationApi
+
+// coroutines / flow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.snapshotFlow
 
 // ==========================
 // TOP APP BAR
@@ -78,24 +98,46 @@ private fun AppToolbar(navController: NavController) {
 // ==========================
 // MAIN APP SCREEN (MERGED)
 // ==========================
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MainAppScreen(
     navController: NavController,
-    viewModel: AuthViewModel,
+    viewModel: AuthViewModel,          // tetap ada jika dipakai
     noteViewModel: NoteViewModel,
-    authViewModel: AuthViewModel,
+    authViewModel: AuthViewModel,      // kamu nampaknya punya dua param auth, biarkan agar kompatibel
     studyGroupViewModel: StudyGroupViewModel
 ) {
     // --- restore tab terakhir ---
-    val initialTab = authViewModel.lastActiveTab.collectAsState().value
-    var currentTab by remember { mutableStateOf(initialTab) }
+    val initialTab by authViewModel.lastActiveTab.collectAsState()
+    val tabs = listOf(
+        NavigationItem.Tugas.route,
+        NavigationItem.Keuangan.route,
+        NavigationItem.Grup.route,
+        NavigationItem.Catatan.route,
+        NavigationItem.Event.route
+    )
 
-    LaunchedEffect(currentTab) {
-        authViewModel.setLastActiveTab(currentTab)
+    val initialIndex = tabs.indexOf(initialTab).takeIf { it >= 0 } ?: 0
 
-        if (currentTab == NavigationItem.Catatan.route) {
-            noteViewModel.loadNotes()
-        }
+    // Pager state (accompanist)
+    val pagerState = rememberPagerState(
+        initialPage = initialIndex,
+        pageCount = { tabs.size }
+    )
+
+    // currentTab di-sync dari pagerState
+    var currentTab by remember { mutableStateOf(tabs.getOrElse(initialIndex) { tabs.first() }) }
+
+    val coroutineScope = rememberCoroutineScope()
+
+    // Sync: saat pager berpindah (swipe), update currentTab & simpan ke authViewModel
+    LaunchedEffect(pagerState) {
+        snapshotFlow { pagerState.currentPage }
+            .collectLatest { page ->
+                val newTab = tabs.getOrElse(page) { tabs.first() }
+                currentTab = newTab
+                authViewModel.setLastActiveTab(newTab)
+            }
     }
 
     // --- Event ViewModel (shared di MainApp) ---
@@ -107,24 +149,32 @@ fun MainAppScreen(
     Scaffold(
         topBar = { AppToolbar(navController) },
         bottomBar = {
+            // Ketika user tap bottom bar -> scroll pager ke page yang sesuai
             AnimatedBottomNavigationBar(
                 currentTab = currentTab,
-                onTabSelected = { selected -> currentTab = selected }
+                onTabSelected = { selected ->
+                    val index = tabs.indexOf(selected).takeIf { it >= 0 } ?: 0
+                    coroutineScope.launch {
+                        pagerState.animateScrollToPage(index)
+                    }
+                }
             )
         }
     ) { innerPadding ->
 
-        Box(
+        // CONTENT: Pager yang bisa di-swipe (accompanist)
+        HorizontalPager(
+            state = pagerState,
             modifier = Modifier
-                .padding(top = 64.dp ,bottom = innerPadding.calculateBottomPadding())
+                .padding(
+                    top = 64.dp,
+                    bottom = innerPadding.calculateBottomPadding()
+                )
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background),
-            contentAlignment = Alignment.Center
-        ) {
-            when (currentTab) {
+        ) { page ->
+        when (tabs[page]) {
                 // ================= TUGAS TAB =================
                 NavigationItem.Tugas.route -> {
-                    // PERBAIKAN DISINI: Gunakan Factory untuk TugasViewModel
                     val tugasRepository = remember { TugasRepository() }
                     val tugasViewModel: TugasViewModel = viewModel(
                         factory = TugasViewModelFactory(tugasRepository)
@@ -138,8 +188,9 @@ fun MainAppScreen(
                     }
                 }
 
-                NavigationItem.Keuangan.route ->
+                NavigationItem.Keuangan.route -> {
                     DummyScreen("Halaman Keuangan")
+                }
 
                 // ================= EVENT TAB =================
                 NavigationItem.Event.route -> {
@@ -175,8 +226,7 @@ fun MainAppScreen(
                     )
                 }
 
-                else ->
-                    DummyScreen("Halaman Tugas")
+                else -> DummyScreen("Halaman Tugas")
             }
         }
     }

@@ -30,6 +30,7 @@ uiGraphics = "1.10.0"
 roomCommonJvm = "2.8.4"
 runtime = "1.10.0"
 compiler = "3.2.0-alpha11"
+foundation = "1.10.0"
 
 
 [libraries]
@@ -89,6 +90,7 @@ androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics", ve
 androidx-room-common-jvm = { group = "androidx.room", name = "room-common-jvm", version.ref = "roomCommonJvm" }
 androidx-compose-runtime = { group = "androidx.compose.runtime", name = "runtime", version.ref = "runtime" }
 androidx-compiler = { group = "androidx.databinding", name = "compiler", version.ref = "compiler" }
+androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundation" }
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }

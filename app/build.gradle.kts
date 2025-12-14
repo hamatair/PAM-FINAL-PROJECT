@@ -97,9 +97,11 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.room.common.jvm)
     implementation(libs.androidx.compose.runtime)
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0")
     implementation(libs.androidx.compose.runtime)
     implementation(libs.androidx.compiler)
+    implementation(libs.androidx.compose.foundation)
+    implementation("com.google.accompanist:accompanist-pager:0.30.1")
 
     // Testing
     testImplementation(libs.junit)
