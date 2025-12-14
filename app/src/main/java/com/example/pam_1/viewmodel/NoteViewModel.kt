@@ -1,5 +1,6 @@
 package com.example.pam_1.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.pam_1.data.model.Note
@@ -14,31 +15,26 @@ class NoteViewModel(
 ) : ViewModel() {
 
     // =========================
-    // STATE LIST NOTE
+    // STATE FLOWS
     // =========================
     private val _noteListState =
         MutableStateFlow<UiState<List<Note>>>(UiState.Idle)
     val noteListState: StateFlow<UiState<List<Note>>> =
         _noteListState.asStateFlow()
 
-    // =========================
-    // STATE DETAIL NOTE
-    // =========================
     private val _noteDetailState =
         MutableStateFlow<UiState<Note?>>(UiState.Idle)
     val noteDetailState: StateFlow<UiState<Note?>> =
         _noteDetailState.asStateFlow()
 
-    // =========================
-    // STATE ACTION (ADD / UPDATE / DELETE)
-    // =========================
     private val _actionState =
         MutableStateFlow<UiState<String>>(UiState.Idle)
     val actionState: StateFlow<UiState<String>> =
         _actionState.asStateFlow()
 
+
     // =========================
-    // LOAD ALL NOTES
+    // LOAD NOTES
     // =========================
     fun loadNotes() {
         viewModelScope.launch {
@@ -54,7 +50,7 @@ class NoteViewModel(
     }
 
     // =========================
-    // LOAD NOTE BY ID (DETAIL)
+    // LOAD DETAIL
     // =========================
     fun loadNoteDetail(noteId: Long) {
         viewModelScope.launch {
@@ -80,92 +76,132 @@ class NoteViewModel(
         title: String,
         description: String,
         isPinned: Boolean,
-        imageBytes: ByteArray?
+        imageBytes: ByteArray? // Dari Galeri
     ) {
         viewModelScope.launch {
             _actionState.value = UiState.Loading
             try {
-                val imageUrl =
-                    imageBytes?.let { repository.uploadNoteImage(it) }
+                // Upload Image
+                val imageUrl = imageBytes?.let {
+                    repository.uploadNoteImage(it)
+                }
 
                 val note = Note(
-                    id = null,
-                    userId = null,
                     title = title,
                     description = description,
                     imageUrl = imageUrl,
-                    isPinned = isPinned,
-                    createdAt = null,
-                    updatedAt = null
+                    isPinned = isPinned
                 )
 
                 repository.createNote(note)
-                _actionState.value =
-                    UiState.Success("Note berhasil dibuat")
-                loadNotes()
+                _actionState.value = UiState.Success("Note berhasil dibuat")
 
             } catch (e: Exception) {
-                _actionState.value =
-                    UiState.Error("Gagal menambah note: ${e.message}")
+                Log.e("DEBUG_VM", "Error di addNote: ${e.message}", e)
+                _actionState.value = UiState.Error("Gagal menambah note: ${e.message}")
             }
         }
     }
 
     // =========================
-    // UPDATE NOTE
+    // UPDATE NOTE (Termasuk Hapus Gambar Lama)
     // =========================
     fun updateNote(
         noteId: Long,
         title: String,
         description: String,
         isPinned: Boolean,
-        imageBytes: ByteArray?,
-        currentImageUrl: String?
+        imageBytes: ByteArray?, // Gambar baru dari Galeri
+        currentImageUrl: String? // URL gambar lama dari DB
     ) {
         viewModelScope.launch {
             _actionState.value = UiState.Loading
+
+            var newImageUrl: String? = currentImageUrl
+
             try {
-                val imageUrl =
-                    imageBytes?.let { repository.uploadNoteImage(it) }
-                        ?: currentImageUrl
+                // Jika ada gambar baru yang diupload
+                if (imageBytes != null) {
+                    // 1. Hapus gambar lama (jika ada)
+                    if (currentImageUrl != null) {
+                        repository.deleteNoteImage(currentImageUrl)
+                    }
+
+                    // 2. Upload gambar baru
+                    newImageUrl = repository.uploadNoteImage(imageBytes)
+                }
+
+                // Jika user memilih untuk menghapus gambar, perlu ada logika di sini (saat ini diasumsikan tidak bisa menghapus, hanya mengganti atau tidak mengganti)
 
                 val updatedNote = Note(
                     id = noteId,
-                    userId = null,
                     title = title,
                     description = description,
-                    imageUrl = imageUrl,
+                    imageUrl = newImageUrl,
                     isPinned = isPinned,
-                    createdAt = null,
-                    updatedAt = null
+                    userId = null, createdAt = null, updatedAt = null
                 )
 
                 repository.updateNote(noteId, updatedNote)
-                _actionState.value =
-                    UiState.Success("Note berhasil diperbarui")
-                loadNotes()
+                _actionState.value = UiState.Success("Note berhasil diperbarui")
 
             } catch (e: Exception) {
-                _actionState.value =
-                    UiState.Error("Gagal update note: ${e.message}")
+                Log.e("DEBUG_VM", "Error di updateNote: ${e.message}", e)
+                _actionState.value = UiState.Error("Gagal update note: ${e.message}")
             }
         }
     }
 
     // =========================
-    // DELETE NOTE
+    // UPDATE PIN STATUS (Ringan)
+    // =========================
+    fun updatePinStatus(noteId: Long, isPinned: Boolean) {
+        viewModelScope.launch {
+            try {
+                repository.updatePinned(noteId, isPinned)
+
+                // Refresh data list agar urutan berubah
+                loadNotes()
+
+                // Update state detail
+                val currentDetail = _noteDetailState.value
+                if (currentDetail is UiState.Success && currentDetail.data?.id == noteId) {
+                    _noteDetailState.value = UiState.Success(
+                        currentDetail.data.copy(isPinned = isPinned)
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e("DEBUG_VM", "Gagal update pin: ${e.message}")
+            }
+        }
+    }
+
+
+    // =========================
+    // DELETE NOTE (Termasuk Hapus Gambar)
     // =========================
     fun deleteNote(noteId: Long) {
         viewModelScope.launch {
             _actionState.value = UiState.Loading
             try {
+                // Ambil detail dulu untuk mendapatkan URL gambar
+                val noteToDelete = repository.getNoteById(noteId)
+
+                // 1. Hapus gambar dari Storage (jika ada)
+                noteToDelete?.imageUrl?.let {
+                    repository.deleteNoteImage(it)
+                }
+
+                // 2. Hapus entry dari PostgREST
                 repository.deleteNote(noteId)
+
                 _actionState.value =
                     UiState.Success("Note berhasil dihapus")
                 loadNotes()
             } catch (e: Exception) {
+                Log.e("DEBUG_VM", "Error di deleteNote: ${e.message}", e)
                 _actionState.value =
-                    UiState.Error("Gagal menghapus note")
+                    UiState.Error("Gagal menghapus note: ${e.message}")
             }
         }
     }

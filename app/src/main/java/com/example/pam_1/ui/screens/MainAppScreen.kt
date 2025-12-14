@@ -31,6 +31,7 @@ import com.example.pam_1.viewmodel.NoteViewModelFactory
 fun MainAppScreen(
     navController: NavController,
     viewModel: AuthViewModel,
+    noteViewModel: NoteViewModel
 ) {
     // --- State Management untuk Tab Aktif ---
     val initialTab = viewModel.lastActiveTab.collectAsState().value
@@ -38,6 +39,10 @@ fun MainAppScreen(
 
     LaunchedEffect(currentTab) {
         viewModel.setLastActiveTab(currentTab)
+
+        if (currentTab == NavigationItem.Catatan.route) {
+            noteViewModel.loadNotes()
+        }
     }
 
     // Inisialisasi ViewModel untuk Event di dalam MainApp
@@ -45,10 +50,10 @@ fun MainAppScreen(
     val eventViewModel: EventViewModel = viewModel(
         factory = EventViewModelFactory(eventRepository)
     )
-    val noteRepository = remember { NoteRepository(SupabaseClient.client) }
-    val noteViewModel: NoteViewModel = viewModel(
-        factory = NoteViewModelFactory(noteRepository)
-    )
+//    val noteRepository = remember { NoteRepository(SupabaseClient.client) }
+//    val noteViewModel: NoteViewModel = viewModel(
+//        factory = NoteViewModelFactory(noteRepository)
+//    )
 
 
     Scaffold(
@@ -73,15 +78,15 @@ fun MainAppScreen(
                 NavigationItem.Keuangan.route -> DummyScreen("Halaman Keuangan")
                 NavigationItem.Grup.route -> DummyScreen("Halaman Grup")
                 NavigationItem.Catatan.route -> {
-                        NotesListScreen(
-                            viewModel = noteViewModel,
-                            onAddNote = {
-                                navController.navigateSafe("note/add")
-                            },
-                            onNoteClick = { noteId ->
-                                navController.navigateSafe("note/read/$noteId")
-                            }
-                        )
+                    NotesListScreen(
+                        viewModel = noteViewModel, // Gunakan parameter yang dikirim
+                        onAddNote = {
+                            navController.navigateSafe("note/add")
+                        },
+                        onNoteClick = { noteId ->
+                            navController.navigateSafe("note/read/$noteId")
+                        }
+                    )
                 }
 
                 // --- TAB EVENT ---

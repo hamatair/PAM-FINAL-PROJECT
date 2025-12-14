@@ -1,14 +1,13 @@
 package com.example.pam_1.navigations
 
+import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
-import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -23,7 +22,6 @@ import com.example.pam_1.ui.screens.*
 import com.example.pam_1.ui.screens.features.auth.*
 import com.example.pam_1.ui.screens.features.events.*
 import com.example.pam_1.ui.screens.features.notes.AddEditNoteScreen
-import com.example.pam_1.ui.screens.features.notes.NotesListScreen
 import com.example.pam_1.ui.screens.features.notes.ReadNoteScreen
 import com.example.pam_1.viewmodel.AuthViewModel
 import com.example.pam_1.viewmodel.AuthViewModelFactory
@@ -51,12 +49,14 @@ fun AppNavigation() {
         )
     )
 
-    // Factory Event (Di-share ke screen yang butuh EventViewModel)
+    // Factory Event
     val eventRepository = remember { EventRepository(SupabaseClient.client) }
     val eventViewModelFactory = remember { EventViewModelFactory(eventRepository) }
 
+    // Factory Note & Shared ViewModel
     val noteRepository = remember { NoteRepository(SupabaseClient.client) }
     val noteViewModelFactory = remember { NoteViewModelFactory(noteRepository) }
+    val sharedNoteViewModel: NoteViewModel = viewModel(factory = noteViewModelFactory)
 
 
     NavHost(
@@ -64,7 +64,6 @@ fun AppNavigation() {
         startDestination = "splash"
     ) {
         // --- AUTH SECTION ---
-        // (Section ini jarang menyebabkan crash double tap, tapi aman menggunakan navigate biasa)
         composable("splash") { SplashScreen(navController, authRepository) }
         composable("login") { LoginScreen(navController, authViewModel) }
         composable("register") { RegisterScreen(navController, authViewModel) }
@@ -75,13 +74,12 @@ fun AppNavigation() {
 
         // --- MAIN FEATURES ---
 
-        // 1. HOME (MainAppScreen dengan Bottom Nav)
+        // 1. HOME
         composable("home") {
-            // MainAppScreen menerima navController, pastikan di dalam MainAppScreen
-            // Anda juga menggunakan .navigateSafe() jika memanggil navigasi
             MainAppScreen(
                 navController = navController,
-                viewModel = authViewModel
+                viewModel = authViewModel,
+                noteViewModel = sharedNoteViewModel
             )
         }
 
@@ -90,12 +88,11 @@ fun AppNavigation() {
             val eventViewModel: EventViewModel = viewModel(factory = eventViewModelFactory)
             AddEventScreen(
                 viewModel = eventViewModel,
-                // FIX: Gunakan popBackStackSafe
                 onNavigateBack = { navController.popBackStackSafe() }
             )
         }
 
-        // 3. MY EVENTS (Event Saya)
+        // 3. MY EVENTS
         composable("my_events") {
             val eventViewModel: EventViewModel = viewModel(factory = eventViewModelFactory)
             val currentUserId = SupabaseClient.client.auth.currentUserOrNull()?.id ?: ""
@@ -103,11 +100,9 @@ fun AppNavigation() {
             MyEventsScreen(
                 viewModel = eventViewModel,
                 currentUserId = currentUserId,
-                // FIX: Gunakan navigateSafe
                 onNavigateToDetail = { eventId ->
                     navController.navigateSafe("event_detail/$eventId")
                 },
-                // FIX: Gunakan popBackStackSafe
                 onNavigateBack = { navController.popBackStackSafe() }
             )
         }
@@ -123,151 +118,144 @@ fun AppNavigation() {
             DetailEventScreen(
                 eventId = eventId,
                 viewModel = eventViewModel,
-                // FIX: Gunakan popBackStackSafe
                 onNavigateBack = { navController.popBackStackSafe() }
             )
         }
 
         // ================= NOTES =================
 
-//        composable("notes") {
-//            val noteViewModel: NoteViewModel =
-//                viewModel(factory = noteViewModelFactory)
-//
-//            LaunchedEffect(Unit) {
-//                noteViewModel.loadNotes()
-//            }
-//
-//            NotesListScreen(
-//                viewModel = noteViewModel,
-//                onAddNote = {
-//                    navController.navigateSafe("note/add")
-//                },
-//                onNoteClick = { id ->
-//                    navController.navigateSafe("note/read/$id")
-//                }
-//            )
-//        }
-
-// ---------- READ NOTE ----------
+        // ---------- READ NOTE ----------
         composable(
             route = "note/read/{noteId}",
             arguments = listOf(navArgument("noteId") { type = NavType.LongType })
         ) { backStackEntry ->
-
             val noteId = backStackEntry.arguments!!.getLong("noteId")
 
-            val noteViewModel: NoteViewModel =
-                viewModel(factory = noteViewModelFactory)
+            // Gunakan sharedNoteViewModel
+            val noteViewModel = sharedNoteViewModel
 
-            val noteState = noteViewModel.noteDetailState.collectAsState()
+            val noteState by noteViewModel.noteDetailState.collectAsState()
+            val actionState by noteViewModel.actionState.collectAsState()
 
             LaunchedEffect(noteId) {
-                noteViewModel.loadNoteDetail(noteId) // ✅ BENAR
+                noteViewModel.loadNoteDetail(noteId)
             }
 
-            if (noteState.value is UiState.Success) {
-                val note = (noteState.value as UiState.Success).data
+            // Listener Action (Hapus)
+            LaunchedEffect(actionState) {
+                if (actionState is UiState.Success) {
+                    val msg = (actionState as UiState.Success).data
+                    if (msg.contains("dihapus", ignoreCase = true)) {
+                        noteViewModel.resetActionState()
+                        navController.popBackStackSafe()
+                    }
+                }
+            }
 
+            if (noteState is UiState.Success) {
+                val note = (noteState as UiState.Success).data
                 if (note != null) {
                     ReadNoteScreen(
-                        note = note, // ✅ KIRIM OBJECT NOTE
-                        onBack = {
-                            navController.popBackStackSafe()
-                        },
-                        onEditNote = { id ->
-                            navController.navigateSafe("note/edit/$id")
-                        },
+                        note = note,
+                        onBack = { navController.popBackStackSafe() },
+                        onEditNote = { id -> navController.navigateSafe("note/edit/$id") },
+                        // FIX: Gunakan updatePinStatus agar lebih aman & ringan
                         onPinToggle = { pinned ->
-                            noteViewModel.updateNote(
-                                noteId = note.id!!,
-                                title = note.title,
-                                description = note.description,
-                                isPinned = pinned,
-                                imageBytes = null,
-                                currentImageUrl = note.imageUrl
-                            )
+                            noteViewModel.updatePinStatus(note.id!!, pinned)
                         },
-                        onDelete = { id ->
-                            noteViewModel.deleteNote(id)
-                            navController.popBackStackSafe()
-                        }
+                        onDelete = { id -> noteViewModel.deleteNote(id) }
                     )
                 }
             }
         }
 
-
         // ---------- ADD NOTE ----------
         composable("note/add") {
-            val noteViewModel: NoteViewModel =
-                viewModel(factory = noteViewModelFactory)
+            val noteViewModel = sharedNoteViewModel
+            val actionState by noteViewModel.actionState.collectAsState()
+            val context = LocalContext.current
+
+            // Listener: SUKSES
+            LaunchedEffect(actionState) {
+                if (actionState is UiState.Success) {
+                    android.widget.Toast.makeText(context, "Berhasil Simpan!", android.widget.Toast.LENGTH_SHORT).show()
+                    noteViewModel.loadNotes()
+                    noteViewModel.resetActionState()
+                    navController.popBackStackSafe()
+                }
+            }
+
+            // Listener: ERROR
+            LaunchedEffect(actionState) {
+                if (actionState is UiState.Error) {
+                    val errorMsg = (actionState as UiState.Error).message
+                    Log.e("DEBUG_NAV", "UI State Error: $errorMsg")
+                    android.widget.Toast.makeText(context, errorMsg, android.widget.Toast.LENGTH_LONG).show()
+                }
+            }
 
             AddEditNoteScreen(
                 note = null,
-                onBack = {
-                    navController.popBackStackSafe()
-                },
-                onSave = { title, description, isPinned ->
-                    noteViewModel.addNote(
-                        title = title,
-                        description = description,
-                        isPinned = isPinned,
-                        imageBytes = null
-                    )
-                    navController.popBackStackSafe()
-                },
-                onAddImage = { }
+                onBack = { navController.popBackStackSafe() },
+                // FIX: Menambahkan parameter imageBytes
+                onSave = { title, description, isPinned, imageBytes ->
+                    if (title.isBlank()) {
+                        android.widget.Toast.makeText(context, "Judul tidak boleh kosong", android.widget.Toast.LENGTH_SHORT).show()
+                    } else {
+                        noteViewModel.addNote(
+                            title = title,
+                            description = description,
+                            isPinned = isPinned,
+                            imageBytes = imageBytes // Kirim byte gambar ke ViewModel
+                        )
+                    }
+                }
             )
         }
 
-
-// ---------- EDIT NOTE ----------
         // ---------- EDIT NOTE ----------
         composable(
             route = "note/edit/{noteId}",
             arguments = listOf(navArgument("noteId") { type = NavType.LongType })
         ) { backStackEntry ->
-
             val noteId = backStackEntry.arguments!!.getLong("noteId")
-            val noteViewModel: NoteViewModel =
-                viewModel(factory = noteViewModelFactory)
+            val noteViewModel = sharedNoteViewModel
 
             val noteState = noteViewModel.noteDetailState.collectAsState()
+            val actionState by noteViewModel.actionState.collectAsState()
 
-            LaunchedEffect(noteId) {
-                noteViewModel.loadNoteDetail(noteId) // ✅ FIX
+            LaunchedEffect(noteId) { noteViewModel.loadNoteDetail(noteId) }
+
+            // Jika Update Berhasil -> Refresh List -> Kembali
+            LaunchedEffect(actionState) {
+                if (actionState is UiState.Success) {
+                    noteViewModel.loadNotes()
+                    noteViewModel.resetActionState()
+                    navController.popBackStackSafe()
+                }
             }
 
             if (noteState.value is UiState.Success) {
                 val note = (noteState.value as UiState.Success).data ?: return@composable
-
                 AddEditNoteScreen(
                     note = note,
                     onBack = {
                         noteViewModel.clearNoteDetail()
                         navController.popBackStackSafe()
                     },
-                    onSave = { title, description, isPinned ->
+                    // FIX: Menambahkan parameter imageBytes
+                    onSave = { title, desc, pinned, imageBytes ->
                         noteViewModel.updateNote(
                             noteId = noteId,
                             title = title,
-                            description = description,
-                            isPinned = isPinned,
-                            imageBytes = null,
-                            currentImageUrl = note.imageUrl // ✅ WAJIB
+                            description = desc,
+                            isPinned = pinned,
+                            imageBytes = imageBytes, // Kirim byte gambar baru (jika ada)
+                            currentImageUrl = note.imageUrl
                         )
-                        navController.popBackStackSafe()
-                    },
-                    onAddImage = { }
+                    }
                 )
             }
         }
-
-
-
-
-
-
     }
 }
