@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.pam_1.data.model.GroupMember
@@ -32,6 +33,7 @@ fun GroupDetailScreen(navController: NavController, viewModel: StudyGroupViewMod
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showLeaveDialog by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableStateOf(0) }
+    val isMember = userRole != null // User is member if they have a role
 
     LaunchedEffect(groupId) { viewModel.loadGroupById(groupId) }
 
@@ -194,51 +196,82 @@ fun GroupDetailScreen(navController: NavController, viewModel: StudyGroupViewMod
                 Spacer(Modifier.height(8.dp))
 
                 // Tab Row
-                TabRow(selectedTabIndex = selectedTab) {
-                    Tab(
-                            selected = selectedTab == 0,
-                            onClick = { selectedTab = 0 },
-                            text = { Text("Anggota") }
-                    )
-                    Tab(
-                            selected = selectedTab == 1,
-                            onClick = { selectedTab = 1 },
-                            text = { Text("Obrolan") }
-                    )
-                }
-
-                // Content
-                when (selectedTab) {
-                    0 -> {
-                        LazyColumn(
-                                modifier = Modifier.fillMaxSize(),
-                                contentPadding = PaddingValues(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                // Only show tabs if user is a member
+                if (isMember) {
+                    TabRow(selectedTabIndex = selectedTab) {
+                        Tab(
+                                selected = selectedTab == 0,
+                                onClick = { selectedTab = 0 },
+                                text = { Text("Anggota") }
+                        )
+                        Tab(
+                                selected = selectedTab == 1,
+                                onClick = { selectedTab = 1 },
+                                text = { Text("Obrolan") }
+                        )
+                    }
+                } else {
+                    // Show message for non-members
+                    Card(
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            colors =
+                                    CardDefaults.cardColors(
+                                            containerColor =
+                                                    MaterialTheme.colorScheme.secondaryContainer
+                                    )
+                    ) {
+                        Column(
+                                modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
                         ) {
-                            items(members) { member ->
-                                MemberCard(
-                                        member = member,
-                                        canManage =
-                                                userRole == GroupRole.OWNER ||
-                                                        userRole == GroupRole.MODERATOR,
-                                        isOwner = userRole == GroupRole.OWNER,
-                                        onChangeRole = { newRole ->
-                                            viewModel.updateMemberRole(
-                                                    groupId,
-                                                    member.userId,
-                                                    newRole
-                                            )
-                                        },
-                                        onRemove = {
-                                            viewModel.removeMember(groupId, member.userId)
-                                        }
-                                )
-                            }
+                            Icon(
+                                    Icons.Default.Lock,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(48.dp),
+                                    tint = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                    "Gabung grup untuk melihat anggota dan obrolan",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    textAlign = TextAlign.Center,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
                         }
                     }
-                    1 -> {
-                        // Navigate to chat screen
-                        LaunchedEffect(Unit) {
+                }
+
+                // Only show content if user is a member
+                if (isMember) {
+                    Spacer(Modifier.height(16.dp))
+                    when (selectedTab) {
+                        0 -> {
+                            // Members tab
+                            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                items(members) { member ->
+                                    MemberCard(
+                                            member = member,
+                                            canManage =
+                                                    userRole == GroupRole.OWNER ||
+                                                            userRole == GroupRole.MODERATOR,
+                                            isOwner = userRole == GroupRole.OWNER,
+                                            onChangeRole = { newRole ->
+                                                viewModel.updateMemberRole(
+                                                        groupId,
+                                                        member.userId,
+                                                        newRole
+                                                )
+                                            },
+                                            onRemove = {
+                                                viewModel.removeMember(groupId, member.userId)
+                                            }
+                                    )
+                                }
+                            }
+                        }
+                        1 -> {
+                            // Chat tab - Navigate to chat screen
                             navController.navigate("group_chat/$groupId")
                             selectedTab = 0 // Reset tab when returning
                         }
