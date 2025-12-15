@@ -160,7 +160,8 @@ fun AppNavigation() {
             AddEditNoteScreen(
                     note = null,
                     onBack = { navController.popBackStackSafe() },
-                    onSave = { t, d, p, img -> noteViewModel.addNote(t, d, p, img) }
+                    onSave = { t, d, p, img -> noteViewModel.addNote(t, d, p, img)
+                        navController.popBackStackSafe() }
             )
         }
 
@@ -198,6 +199,7 @@ fun AppNavigation() {
                         onSave = { t, d, p, img ->
                             val currentImage = (state as? UiState.Success)?.data?.imageUrl
                             noteViewModel.updateNote(id, t, d, p, img, currentImage)
+                            navController.popBackStackSafe()
                         }
                 )
             }

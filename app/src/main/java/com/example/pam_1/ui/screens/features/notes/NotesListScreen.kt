@@ -73,16 +73,6 @@ fun NotesListScreen(
                 .background(MaterialTheme.colorScheme.background)
         ) {
 
-            Text(
-                text = "Catatan",
-                style = MaterialTheme.typography.headlineLarge,
-                modifier = Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .padding(16.dp)
-            )
-
-            Divider(thickness = 1.dp, color = Color(0xFFDDDDDD))
-
             when (noteState) {
                 // Saat IDLE (belum load) atau LOADING, tampilkan loading
                 is UiState.Idle, is UiState.Loading -> {
