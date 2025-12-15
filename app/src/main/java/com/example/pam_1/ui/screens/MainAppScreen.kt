@@ -84,6 +84,7 @@ private fun AppToolbar(navController: NavController) {
             }
         }
     }
+}
 
 // ==========================
 // MAIN APP SCREEN (FINAL MERGE)
@@ -222,4 +223,4 @@ fun MainAppScreen(
         }
     }
 }
-}
+
