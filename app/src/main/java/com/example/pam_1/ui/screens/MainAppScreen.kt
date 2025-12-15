@@ -1,30 +1,14 @@
 package com.example.pam_1.ui.screens
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -37,24 +21,11 @@ import com.example.pam_1.navigations.NavigationItem
 import com.example.pam_1.navigations.navigateSafe
 import com.example.pam_1.ui.common.AnimatedBottomNavigationBar
 import com.example.pam_1.ui.screens.features.events.EventListScreen
+import com.example.pam_1.ui.screens.features.finance.ExpenseHomeScreen
 import com.example.pam_1.ui.screens.features.group_chat.StudyGroupListScreen
 import com.example.pam_1.ui.screens.features.notes.NotesListScreen
 import com.example.pam_1.ui.screens.features.tugas.TugasScreen
-import com.example.pam_1.viewmodel.AuthViewModel
-import com.example.pam_1.viewmodel.EventViewModel
-import com.example.pam_1.viewmodel.EventViewModelFactory
-import com.example.pam_1.viewmodel.NoteViewModel
-import com.example.pam_1.viewmodel.StudyGroupViewModel
-import com.example.pam_1.viewmodel.TugasViewModel
-import com.example.pam_1.viewmodel.TugasViewModelFactory
-
-// accompanist pager
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.pager.PagerState
-import androidx.compose.foundation.ExperimentalFoundationApi
-
-// coroutines / flow
+import com.example.pam_1.viewmodel.*
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.snapshotFlow
@@ -65,9 +36,10 @@ import androidx.compose.runtime.snapshotFlow
 @Composable
 private fun AppToolbar(navController: NavController) {
     Surface(
-        modifier = Modifier.fillMaxWidth().height(80.dp),
-        color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 0.dp
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(80.dp),
+        color = MaterialTheme.colorScheme.surface
     ) {
         Row(
             modifier = Modifier
@@ -82,13 +54,11 @@ private fun AppToolbar(navController: NavController) {
             )
 
             IconButton(
-                onClick = { navController.navigateSafe("profile") },
-                modifier = Modifier.size(24.dp)  // Ukuran lebih kecil
+                onClick = { navController.navigateSafe("profile") }
             ) {
                 Icon(
                     imageVector = Icons.Default.Person,
-                    contentDescription = "Profile",
-                    modifier = Modifier.size(20.dp)
+                    contentDescription = "Profile"
                 )
             }
         }
@@ -96,19 +66,18 @@ private fun AppToolbar(navController: NavController) {
 }
 
 // ==========================
-// MAIN APP SCREEN (MERGED)
+// MAIN APP SCREEN (FINAL MERGE)
 // ==========================
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MainAppScreen(
     navController: NavController,
-    viewModel: AuthViewModel,          // tetap ada jika dipakai
+    authViewModel: AuthViewModel,
+    studyGroupViewModel: StudyGroupViewModel,
     noteViewModel: NoteViewModel,
-    authViewModel: AuthViewModel,      // kamu nampaknya punya dua param auth, biarkan agar kompatibel
-    studyGroupViewModel: StudyGroupViewModel
+    expenseViewModel: ExpenseViewModel
 ) {
-    // --- restore tab terakhir ---
-    val initialTab by authViewModel.lastActiveTab.collectAsState()
+    // ---------- TAB SETUP ----------
     val tabs = listOf(
         NavigationItem.Tugas.route,
         NavigationItem.Keuangan.route,
@@ -117,30 +86,31 @@ fun MainAppScreen(
         NavigationItem.Event.route
     )
 
-    val initialIndex = tabs.indexOf(initialTab).takeIf { it >= 0 } ?: 0
+    val lastTab by authViewModel.lastActiveTab.collectAsState()
+    val initialIndex = tabs.indexOf(lastTab).takeIf { it >= 0 } ?: 0
 
-    // Pager state (accompanist)
     val pagerState = rememberPagerState(
         initialPage = initialIndex,
         pageCount = { tabs.size }
     )
 
-    // currentTab di-sync dari pagerState
-    var currentTab by remember { mutableStateOf(tabs.getOrElse(initialIndex) { tabs.first() }) }
+    var currentTab by remember {
+        mutableStateOf(tabs[initialIndex])
+    }
 
     val coroutineScope = rememberCoroutineScope()
 
-    // Sync: saat pager berpindah (swipe), update currentTab & simpan ke authViewModel
+    // Sync pager -> bottom nav
     LaunchedEffect(pagerState) {
         snapshotFlow { pagerState.currentPage }
             .collectLatest { page ->
-                val newTab = tabs.getOrElse(page) { tabs.first() }
-                currentTab = newTab
-                authViewModel.setLastActiveTab(newTab)
+                val tab = tabs[page]
+                currentTab = tab
+                authViewModel.setLastActiveTab(tab)
             }
     }
 
-    // --- Event ViewModel (shared di MainApp) ---
+    // ---------- EVENT VM ----------
     val eventRepository = remember { EventRepository(SupabaseClient.client) }
     val eventViewModel: EventViewModel = viewModel(
         factory = EventViewModelFactory(eventRepository)
@@ -149,7 +119,6 @@ fun MainAppScreen(
     Scaffold(
         topBar = { AppToolbar(navController) },
         bottomBar = {
-            // Ketika user tap bottom bar -> scroll pager ke page yang sesuai
             AnimatedBottomNavigationBar(
                 currentTab = currentTab,
                 onTabSelected = { selected ->
@@ -162,7 +131,6 @@ fun MainAppScreen(
         }
     ) { innerPadding ->
 
-        // CONTENT: Pager yang bisa di-swipe (accompanist)
         HorizontalPager(
             state = pagerState,
             modifier = Modifier
@@ -172,41 +140,31 @@ fun MainAppScreen(
                 )
                 .fillMaxSize()
         ) { page ->
-        when (tabs[page]) {
-                // ================= TUGAS TAB =================
+            when (tabs[page]) {
+
+                // ================= TUGAS =================
                 NavigationItem.Tugas.route -> {
-                    val tugasRepository = remember { TugasRepository() }
+                    val repo = remember { TugasRepository() }
                     val tugasViewModel: TugasViewModel = viewModel(
-                        factory = TugasViewModelFactory(tugasRepository)
+                        factory = TugasViewModelFactory(repo)
                     )
-
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.TopStart
-                    ) {
-                        TugasScreen(viewModel = tugasViewModel)
-                    }
+                    TugasScreen(viewModel = tugasViewModel)
                 }
 
+                // ================= KEUANGAN =================
                 NavigationItem.Keuangan.route -> {
-                    DummyScreen("Halaman Keuangan")
-                }
-
-                // ================= EVENT TAB =================
-                NavigationItem.Event.route -> {
-                    EventListScreen(
-                        viewModel = eventViewModel,
-                        navController = navController,
-                        onNavigateToAddEvent = {
-                            navController.navigateSafe("add_event")
+                    ExpenseHomeScreen(
+                        viewModel = expenseViewModel,
+                        onAddExpenseClick = {
+                            navController.navigateSafe("add_expense")
                         },
-                        onNavigateToDetail = { eventId ->
-                            navController.navigateSafe("event_detail/$eventId")
+                        onExpenseClick = { id ->
+                            navController.navigateSafe("expense_detail/$id")
                         }
                     )
                 }
 
-                // ================= GROUP TAB =================
+                // ================= GROUP =================
                 NavigationItem.Grup.route -> {
                     StudyGroupListScreen(
                         navController = navController,
@@ -214,38 +172,33 @@ fun MainAppScreen(
                     )
                 }
 
+                // ================= CATATAN =================
                 NavigationItem.Catatan.route -> {
                     NotesListScreen(
-                        viewModel = noteViewModel, // Menggunakan Shared ViewModel
+                        viewModel = noteViewModel,
                         onAddNote = {
                             navController.navigateSafe("note/add")
                         },
-                        onNoteClick = { noteId ->
-                            navController.navigateSafe("note/read/$noteId")
+                        onNoteClick = { id ->
+                            navController.navigateSafe("note/read/$id")
                         }
                     )
                 }
 
-                else -> DummyScreen("Halaman Tugas")
+                // ================= EVENT =================
+                NavigationItem.Event.route -> {
+                    EventListScreen(
+                        viewModel = eventViewModel,
+                        navController = navController,
+                        onNavigateToAddEvent = {
+                            navController.navigateSafe("add_event")
+                        },
+                        onNavigateToDetail = { id ->
+                            navController.navigateSafe("event_detail/$id")
+                        }
+                    )
+                }
             }
         }
-    }
-}
-
-// ==========================
-// DUMMY SCREEN
-// ==========================
-@Composable
-fun DummyScreen(title: String) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.headlineMedium
-        )
     }
 }

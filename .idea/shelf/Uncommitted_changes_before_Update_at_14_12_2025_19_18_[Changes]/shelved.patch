@@ -1,0 +1,697 @@
+Index: app/src/main/java/com/example/pam_1/navigations/AppNavigation.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package com.example.pam_1.navigations\r\n\r\nimport androidx.compose.runtime.Composable\r\nimport androidx.compose.runtime.remember\r\nimport androidx.compose.ui.platform.LocalContext\r\nimport androidx.lifecycle.viewmodel.compose.viewModel\r\nimport androidx.navigation.NavType\r\nimport androidx.navigation.compose.NavHost\r\nimport androidx.navigation.compose.composable\r\nimport androidx.navigation.compose.rememberNavController\r\nimport androidx.navigation.navArgument\r\nimport com.example.pam_1.data.SupabaseClient\r\nimport com.example.pam_1.data.repository.AuthRepository\r\nimport com.example.pam_1.data.repository.EventRepository\r\nimport com.example.pam_1.data.repository.UserRepository\r\nimport com.example.pam_1.ui.screens.*\r\nimport com.example.pam_1.ui.screens.features.auth.*\r\nimport com.example.pam_1.ui.screens.features.events.*\r\nimport com.example.pam_1.viewmodel.AuthViewModel\r\nimport com.example.pam_1.viewmodel.AuthViewModelFactory\r\nimport com.example.pam_1.viewmodel.EventViewModel\r\nimport com.example.pam_1.viewmodel.EventViewModelFactory\r\nimport io.github.jan.supabase.auth.auth\r\n\r\n@Composable\r\nfun AppNavigation() {\r\n    val navController = rememberNavController()\r\n    val context = LocalContext.current\r\n\r\n    // Repository Setup\r\n    val authRepository = remember { AuthRepository(context) }\r\n    val userRepository = remember { UserRepository() }\r\n\r\n    // Auth ViewModel Setup\r\n    val authViewModel: AuthViewModel = viewModel(\r\n        factory = AuthViewModelFactory(\r\n            authRepository = authRepository,\r\n            userRepository = userRepository\r\n        )\r\n    )\r\n\r\n    // Factory Event (PENTING: Di-share ke screen yang butuh EventViewModel)\r\n    val eventRepository = remember { EventRepository(SupabaseClient.client) }\r\n    val eventViewModelFactory = remember { EventViewModelFactory(eventRepository) }\r\n\r\n    NavHost(\r\n        navController = navController,\r\n        startDestination = \"splash\"\r\n    ) {\r\n        // --- AUTH SECTION ---\r\n        composable(\"splash\") { SplashScreen(navController, authRepository) }\r\n        composable(\"login\") { LoginScreen(navController, authViewModel) }\r\n        composable(\"register\") { RegisterScreen(navController, authViewModel) }\r\n        composable(\"otp_verification\") { OTPVerificationScreen(navController, authViewModel) }\r\n        composable(\"forgot_password\") { ForgotPasswordScreen(navController, authViewModel) }\r\n        composable(\"new_password\") { NewPasswordScreen(navController, authViewModel) }\r\n        composable(\"profile\") { ProfileScreen(navController, authViewModel) }\r\n\r\n        // --- MAIN FEATURES ---\r\n\r\n        // 1. HOME (MainAppScreen dengan Bottom Nav)\r\n        composable(\"home\") {\r\n            MainAppScreen(\r\n                navController = navController,\r\n                viewModel = authViewModel\r\n            )\r\n        }\r\n\r\n        // 2. ADD EVENT\r\n        composable(\"add_event\") {\r\n            // Kita inject ViewModel baru menggunakan Factory yang sama\r\n            val eventViewModel: EventViewModel = viewModel(factory = eventViewModelFactory)\r\n            AddEventScreen(\r\n                viewModel = eventViewModel,\r\n                onNavigateBack = { navController.popBackStack() }\r\n            )\r\n        }\r\n\r\n        // 3. MY EVENTS (Event Saya)\r\n        composable(\"my_events\") {\r\n            val eventViewModel: EventViewModel = viewModel(factory = eventViewModelFactory)\r\n            val currentUserId = SupabaseClient.client.auth.currentUserOrNull()?.id ?: \"\"\r\n\r\n            MyEventsScreen(\r\n                viewModel = eventViewModel,\r\n                currentUserId = currentUserId,\r\n                onNavigateToDetail = { eventId ->\r\n                    navController.navigate(\"event_detail/$eventId\")\r\n                },\r\n                onNavigateBack = { navController.popBackStack() }\r\n            )\r\n        }\r\n\r\n        // 4. EVENT DETAIL (SUDAH DIPERBAIKI)\r\n        composable(\r\n            route = \"event_detail/{eventId}\",\r\n            arguments = listOf(navArgument(\"eventId\") { type = NavType.StringType })\r\n        ) { backStackEntry ->\r\n            // Ambil ID dari argument navigasi\r\n            val eventId = backStackEntry.arguments?.getString(\"eventId\") ?: \"\"\r\n\r\n            // Buat ViewModel instance\r\n            val eventViewModel: EventViewModel = viewModel(factory = eventViewModelFactory)\r\n\r\n            // Panggil Screen Detail\r\n            DetailEventScreen(\r\n                eventId = eventId,\r\n                viewModel = eventViewModel,\r\n                onNavigateBack = { navController.popBackStack() }\r\n            )\r\n        }\r\n    }\r\n}
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/example/pam_1/navigations/AppNavigation.kt b/app/src/main/java/com/example/pam_1/navigations/AppNavigation.kt
+--- a/app/src/main/java/com/example/pam_1/navigations/AppNavigation.kt	(revision a5b369bbec7f24e004f0d22392777de0158d7625)
++++ b/app/src/main/java/com/example/pam_1/navigations/AppNavigation.kt	(date 1765713562499)
+@@ -43,6 +43,10 @@
+     val eventRepository = remember { EventRepository(SupabaseClient.client) }
+     val eventViewModelFactory = remember { EventViewModelFactory(eventRepository) }
+ 
++    // Factory Expense
++    val expenseRepository = remember { com.example.pam_1.data.repository.ExpenseRepository(SupabaseClient.client) }
++    val expenseViewModelFactory = remember { com.example.pam_1.viewmodel.ExpenseViewModelFactory(expenseRepository) }
++
+     NavHost(
+         navController = navController,
+         startDestination = "splash"
+@@ -60,9 +64,13 @@
+ 
+         // 1. HOME (MainAppScreen dengan Bottom Nav)
+         composable("home") {
++            // Create ExpenseViewModel once and share it
++            val expenseViewModel: com.example.pam_1.viewmodel.ExpenseViewModel = viewModel(factory = expenseViewModelFactory)
++            
+             MainAppScreen(
+                 navController = navController,
+-                viewModel = authViewModel
++                viewModel = authViewModel,
++                expenseViewModel = expenseViewModel
+             )
+         }
+ 
+@@ -76,7 +84,21 @@
+             )
+         }
+ 
+-        // 3. MY EVENTS (Event Saya)
++        // 3. ADD EXPENSE
++        composable("add_expense") {
++            // Get the same ViewModel instance from the "home" backstack entry
++            val homeBackStackEntry = navController.getBackStackEntry("home")
++            val expenseViewModel: com.example.pam_1.viewmodel.ExpenseViewModel = viewModel(
++                viewModelStoreOwner = homeBackStackEntry,
++                factory = expenseViewModelFactory
++            )
++            com.example.pam_1.ui.screens.features.finance.AddExpenseScreen(
++                viewModel = expenseViewModel,
++                onNavigateBack = { navController.popBackStack() }
++            )
++        }
++
++        // 4. MY EVENTS (Event Saya)
+         composable("my_events") {
+             val eventViewModel: EventViewModel = viewModel(factory = eventViewModelFactory)
+             val currentUserId = SupabaseClient.client.auth.currentUserOrNull()?.id ?: ""
+@@ -91,7 +113,28 @@
+             )
+         }
+ 
+-        // 4. EVENT DETAIL (SUDAH DIPERBAIKI)
++        // 4. EXPENSE DETAIL
++        composable(
++            route = "detail_expense/{expenseId}",
++            arguments = listOf(navArgument("expenseId") { type = NavType.IntType })
++        ) { backStackEntry ->
++            val expenseId = backStackEntry.arguments?.getInt("expenseId") ?: 0
++            
++            // Get the same ViewModel instance from the "home" backstack entry
++            val homeBackStackEntry = navController.getBackStackEntry("home")
++            val expenseViewModel: com.example.pam_1.viewmodel.ExpenseViewModel = viewModel(
++                viewModelStoreOwner = homeBackStackEntry,
++                factory = expenseViewModelFactory
++            )
++            
++            com.example.pam_1.ui.screens.features.finance.ExpenseDetailScreen(
++                expenseId = expenseId,
++                viewModel = expenseViewModel,
++                onNavigateBack = { navController.popBackStack() }
++            )
++        }
++
++        // 5. EVENT DETAIL (SUDAH DIPERBAIKI)
+         composable(
+             route = "event_detail/{eventId}",
+             arguments = listOf(navArgument("eventId") { type = NavType.StringType })
+Index: app/src/main/java/com/example/pam_1/ui/screens/MainAppScreen.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package com.example.pam_1.ui.screens\r\n\r\nimport androidx.compose.foundation.background\r\nimport androidx.compose.foundation.layout.Box\r\nimport androidx.compose.foundation.layout.fillMaxSize\r\nimport androidx.compose.foundation.layout.padding\r\nimport androidx.compose.material3.MaterialTheme\r\nimport androidx.compose.material3.Scaffold\r\nimport androidx.compose.material3.Text\r\nimport androidx.compose.runtime.*\r\nimport androidx.compose.ui.Alignment\r\nimport androidx.compose.ui.Modifier\r\nimport androidx.lifecycle.viewmodel.compose.viewModel\r\nimport androidx.navigation.NavController\r\nimport com.example.pam_1.data.SupabaseClient\r\nimport com.example.pam_1.data.repository.EventRepository\r\nimport com.example.pam_1.navigations.NavigationItem\r\nimport com.example.pam_1.ui.common.AnimatedBottomNavigationBar\r\nimport com.example.pam_1.ui.screens.features.events.EventListScreen\r\nimport com.example.pam_1.viewmodel.AuthViewModel\r\nimport com.example.pam_1.viewmodel.EventViewModel\r\nimport com.example.pam_1.viewmodel.EventViewModelFactory\r\n\r\n@Composable\r\nfun MainAppScreen(\r\n    navController: NavController,\r\n    viewModel: AuthViewModel,\r\n) {\r\n    // --- State Management untuk Tab Aktif ---\r\n    val initialTab = viewModel.lastActiveTab.collectAsState().value\r\n    var currentTab by remember { mutableStateOf(initialTab) }\r\n\r\n    LaunchedEffect(currentTab) {\r\n        viewModel.setLastActiveTab(currentTab)\r\n    }\r\n\r\n    // Inisialisasi ViewModel untuk Event di dalam MainApp\r\n    val eventRepository = remember { EventRepository(SupabaseClient.client) }\r\n    val eventViewModel: EventViewModel = viewModel(\r\n        factory = EventViewModelFactory(eventRepository)\r\n    )\r\n\r\n    Scaffold(\r\n        bottomBar = {\r\n            AnimatedBottomNavigationBar(\r\n                currentTab = currentTab,\r\n                onTabSelected = { selected ->\r\n                    currentTab = selected\r\n                }\r\n            )\r\n        }\r\n    ) { innerPadding ->\r\n        Box(\r\n            modifier = Modifier\r\n                .padding(innerPadding)\r\n                .fillMaxSize()\r\n                .background(MaterialTheme.colorScheme.background),\r\n            contentAlignment = Alignment.Center\r\n        ) {\r\n            when (currentTab) {\r\n                NavigationItem.Tugas.route -> DummyScreen(\"Halaman Tugas\")\r\n                NavigationItem.Keuangan.route -> DummyScreen(\"Halaman Keuangan\")\r\n                NavigationItem.Grup.route -> DummyScreen(\"Halaman Grup\")\r\n                NavigationItem.Catatan.route -> DummyScreen(\"Halaman Catatan\")\r\n\r\n                // --- TAB EVENT ---\r\n                NavigationItem.Event.route -> {\r\n                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopStart) {\r\n                        EventListScreen(\r\n                            viewModel = eventViewModel,\r\n                            navController = navController,\r\n                            // Navigasi ke Add Event (Screen penuh)\r\n                            onNavigateToAddEvent = {\r\n                                navController.navigate(\"add_event\")\r\n                            },\r\n                            // Navigasi ke Detail Event\r\n                            onNavigateToDetail = { eventId ->\r\n                                navController.navigate(\"event_detail/$eventId\")\r\n                            },\r\n                        )\r\n                    }\r\n                }\r\n                else -> DummyScreen(\"Halaman Tugas\")\r\n            }\r\n        }\r\n    }\r\n}\r\n\r\n// Komponen Dummy (Tetap sama)\r\n@Composable\r\nfun DummyScreen(title: String) {\r\n    Box(\r\n        modifier = Modifier\r\n            .fillMaxSize()\r\n            .background(MaterialTheme.colorScheme.background),\r\n        contentAlignment = Alignment.Center\r\n    ) {\r\n        Text(\r\n            text = title,\r\n            style = MaterialTheme.typography.headlineMedium,\r\n            color = MaterialTheme.colorScheme.onBackground\r\n        )\r\n    }\r\n}
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/example/pam_1/ui/screens/MainAppScreen.kt b/app/src/main/java/com/example/pam_1/ui/screens/MainAppScreen.kt
+--- a/app/src/main/java/com/example/pam_1/ui/screens/MainAppScreen.kt	(revision a5b369bbec7f24e004f0d22392777de0158d7625)
++++ b/app/src/main/java/com/example/pam_1/ui/screens/MainAppScreen.kt	(date 1765713551107)
+@@ -25,6 +25,7 @@
+ fun MainAppScreen(
+     navController: NavController,
+     viewModel: AuthViewModel,
++    expenseViewModel: com.example.pam_1.viewmodel.ExpenseViewModel
+ ) {
+     // --- State Management untuk Tab Aktif ---
+     val initialTab = viewModel.lastActiveTab.collectAsState().value
+@@ -59,7 +60,22 @@
+         ) {
+             when (currentTab) {
+                 NavigationItem.Tugas.route -> DummyScreen("Halaman Tugas")
+-                NavigationItem.Keuangan.route -> DummyScreen("Halaman Keuangan")
++                
++                // --- TAB KEUANGAN ---
++                NavigationItem.Keuangan.route -> {
++                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopStart) {
++                        com.example.pam_1.ui.screens.features.finance.ExpenseHomeScreen(
++                            viewModel = expenseViewModel,
++                            onAddExpenseClick = {
++                                navController.navigate("add_expense")
++                            },
++                            onExpenseClick = { expenseId ->
++                                navController.navigate("detail_expense/$expenseId")
++                            }
++                        )
++                    }
++                }
++                
+                 NavigationItem.Grup.route -> DummyScreen("Halaman Grup")
+                 NavigationItem.Catatan.route -> DummyScreen("Halaman Catatan")
+ 
+Index: app/src/main/java/com/example/pam_1/ui/screens/features/finance/ExpenseHomeScreen.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/example/pam_1/ui/screens/features/finance/ExpenseHomeScreen.kt b/app/src/main/java/com/example/pam_1/ui/screens/features/finance/ExpenseHomeScreen.kt
+new file mode 100644
+--- /dev/null	(date 1765713535990)
++++ b/app/src/main/java/com/example/pam_1/ui/screens/features/finance/ExpenseHomeScreen.kt	(date 1765713535990)
+@@ -0,0 +1,318 @@
++package com.example.pam_1.ui.screens.features.finance
++
++import androidx.compose.foundation.ExperimentalFoundationApi
++import androidx.compose.foundation.background
++import androidx.compose.foundation.combinedClickable
++import androidx.compose.foundation.layout.*
++import androidx.compose.foundation.lazy.LazyColumn
++import androidx.compose.foundation.lazy.items
++import androidx.compose.foundation.shape.CircleShape
++import androidx.compose.foundation.shape.RoundedCornerShape
++import androidx.compose.material.icons.Icons
++import androidx.compose.material.icons.filled.Add
++import androidx.compose.material3.*
++import androidx.compose.runtime.Composable
++import androidx.compose.runtime.collectAsState
++import androidx.compose.runtime.getValue
++import androidx.compose.runtime.mutableStateOf
++import androidx.compose.runtime.remember
++import androidx.compose.runtime.setValue
++import androidx.compose.ui.Alignment
++import androidx.compose.ui.Modifier
++import androidx.compose.ui.draw.clip
++import androidx.compose.ui.graphics.Color
++import androidx.compose.ui.text.font.FontWeight
++import androidx.compose.ui.unit.dp
++import com.example.pam_1.data.model.Expense
++import com.example.pam_1.ui.theme.PrimaryBrown
++import com.example.pam_1.viewmodel.ExpenseViewModel
++
++@OptIn(ExperimentalMaterial3Api::class)
++@Composable
++fun ExpenseHomeScreen(
++    viewModel: ExpenseViewModel,
++    onAddExpenseClick: () -> Unit,
++    onExpenseClick: (Int) -> Unit = {}
++) {
++    val expenses by viewModel.expenses.collectAsState()
++    val totalExpense = expenses.sumOf { it.amount }
++
++    Scaffold(
++        floatingActionButton = {
++            FloatingActionButton(
++                onClick = onAddExpenseClick,
++                containerColor = PrimaryBrown
++            ) {
++                Icon(
++                    imageVector = Icons.Default.Add,
++                    contentDescription = "Add Expense"
++                )
++            }
++        }
++    ) { paddingValues ->
++
++        LazyColumn(
++            modifier = Modifier
++                .fillMaxSize()
++                .padding(paddingValues),
++            verticalArrangement = Arrangement.spacedBy(20.dp)
++        ) {
++
++            /* ================= HEADER TOTAL ================= */
++            item {
++                Column(
++                    modifier = Modifier.padding(20.dp)
++                ) {
++                    Text(
++                        text = "Rp $totalExpense",
++                        style = MaterialTheme.typography.headlineMedium,
++                        fontWeight = FontWeight.Bold
++                    )
++                    Text(
++                        text = "Total Your Expense",
++                        style = MaterialTheme.typography.bodyMedium
++                    )
++                }
++            }
++
++            /* ================= PIE CHART (FUNCTIONAL) ================= */
++            item {
++                // Calculate category totals
++                val categoryTotals = expenses.groupBy { it.category }
++                    .mapValues { it.value.sumOf { expense -> expense.amount } }
++                
++                if (categoryTotals.isNotEmpty()) {
++                    ExpensePieChart(
++                        categoryData = categoryTotals,
++                        total = totalExpense
++                    )
++                } else {
++                    // Empty state
++                    Box(
++                        modifier = Modifier
++                            .fillMaxWidth()
++                            .height(220.dp),
++                        contentAlignment = Alignment.Center
++                    ) {
++                        Text(
++                            text = "Belum ada data expense",
++                            style = MaterialTheme.typography.bodyMedium,
++                            color = Color.Gray
++                        )
++                    }
++                }
++            }
++
++            /* ================= TITLE LIST ================= */
++            item {
++                Text(
++                    text = "Your Expense",
++                    modifier = Modifier.padding(horizontal = 20.dp),
++                    style = MaterialTheme.typography.titleMedium,
++                    fontWeight = FontWeight.Bold
++                )
++            }
++
++            /* ================= LIST EXPENSE ================= */
++            items(expenses) { expense ->
++                ExpenseItem(
++                    expense = expense,
++                    onClick = { expenseId ->
++                        onExpenseClick(expenseId)
++                    },
++                    onDelete = { expenseId ->
++                        viewModel.deleteExpense(expenseId)
++                    }
++                )
++            }
++        }
++    }
++}
++
++
++@OptIn(ExperimentalFoundationApi::class)
++@Composable
++fun ExpenseItem(
++    expense: Expense,
++    onClick: (Int) -> Unit = {},
++    onDelete: (Int) -> Unit = {}
++) {
++    // State for delete confirmation dialog
++    var showDeleteDialog by remember { mutableStateOf(false) }
++
++    // Delete confirmation dialog
++    if (showDeleteDialog) {
++        AlertDialog(
++            onDismissRequest = { showDeleteDialog = false },
++            title = { Text("Hapus Expense?") },
++            text = {
++                Column {
++                    Text("Yakin ingin menghapus:")
++                    Spacer(modifier = Modifier.height(8.dp))
++                    Text(
++                        text = expense.title,
++                        fontWeight = FontWeight.Bold
++                    )
++                    Text("Rp ${expense.amount}")
++                }
++            },
++            confirmButton = {
++                TextButton(
++                    onClick = {
++                        expense.id?.let { onDelete(it) }
++                        showDeleteDialog = false
++                    }
++                ) {
++                    Text("Hapus", color = Color.Red)
++                }
++            },
++            dismissButton = {
++                TextButton(onClick = { showDeleteDialog = false }) {
++                    Text("Batal")
++                }
++            }
++        )
++    }
++    
++    Card(
++        modifier = Modifier
++            .fillMaxWidth()
++            .padding(horizontal = 16.dp)
++            .combinedClickable(
++                onClick = { expense.id?.let { onClick(it) } },
++                onLongClick = { showDeleteDialog = true }
++            ),
++        shape = RoundedCornerShape(16.dp),
++        elevation = CardDefaults.cardElevation(2.dp)
++    ) {
++        Row(
++            modifier = Modifier.padding(16.dp),
++            verticalAlignment = Alignment.CenterVertically
++        ) {
++
++            Box(
++                modifier = Modifier
++                    .size(48.dp)
++                    .clip(RoundedCornerShape(12.dp))
++                    .background(getCategoryColor(expense.category)),
++                contentAlignment = Alignment.Center
++            ) {
++                Text(
++                    text = expense.category.first().toString(),
++                    fontWeight = FontWeight.Bold,
++                    color = Color.White
++                )
++            }
++
++            Spacer(modifier = Modifier.width(12.dp))
++
++            Column(modifier = Modifier.weight(1f)) {
++                Text(
++                    text = expense.category,
++                    fontWeight = FontWeight.Bold
++                )
++                Text(
++                    text = expense.title,
++                    style = MaterialTheme.typography.bodySmall
++                )
++                Text(
++                    text = expense.expenseDate,
++                    style = MaterialTheme.typography.bodySmall,
++                    color = Color.Gray
++                )
++            }
++
++            Text(
++                text = "Rp ${expense.amount}",
++                fontWeight = FontWeight.Bold
++            )
++        }
++    }
++}
++
++/* ================= PIE CHART COMPONENT ================= */
++
++@Composable
++fun ExpensePieChart(
++    categoryData: Map<String, Long>,
++    total: Long
++) {
++    Column(
++        modifier = Modifier
++            .fillMaxWidth()
++            .padding(16.dp),
++        horizontalAlignment = Alignment.CenterHorizontally
++    ) {
++        // Donut Chart (Stroke-based)
++        Box(
++            modifier = Modifier
++                .size(200.dp),  // Ukuran lebih kecil
++            contentAlignment = Alignment.Center
++        ) {
++            androidx.compose.foundation.Canvas(
++                modifier = Modifier.fillMaxSize()
++            ) {
++                val canvasSize = size.minDimension
++                val strokeWidth = 40f  // Ketebalan stroke donut
++                val radius = (canvasSize - strokeWidth) / 2f
++                val center = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height / 2f)
++                
++                var startAngle = -90f // Start from top
++                
++                categoryData.forEach { (category, amount) ->
++                    val sweepAngle = (amount.toFloat() / total.toFloat()) * 360f
++                    val color = getCategoryColor(category)
++                    
++                    // Draw ARC with STROKE (not fill)
++                    drawArc(
++                        color = color,
++                        startAngle = startAngle,
++                        sweepAngle = sweepAngle,
++                        useCenter = false,  // ← Penting: false untuk donut
++                        topLeft = androidx.compose.ui.geometry.Offset(
++                            center.x - radius,
++                            center.y - radius
++                        ),
++                        size = androidx.compose.ui.geometry.Size(radius * 2, radius * 2),
++                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokeWidth)  // ← Stroke instead of fill
++                    )
++                    
++                    startAngle += sweepAngle
++                }
++                
++                // TIDAK ADA white circle - center transparan
++            }
++            
++            // Center text (already centered by Box alignment)
++            Column(
++                horizontalAlignment = Alignment.CenterHorizontally
++            ) {
++                Text(
++                    text = "Total",
++                    style = MaterialTheme.typography.bodySmall,
++                    color = Color.Gray
++                )
++                Text(
++                    text = "Rp $total",
++                    style = MaterialTheme.typography.titleMedium,
++                    fontWeight = FontWeight.Bold
++                )
++            }
++        }
++        // ✅ Legend removed - kategori info ada di history list
++    }
++}
++
++fun getCategoryColor(category: String): Color {
++    return when (category) {
++        "Akademik" -> Color(0xFF4CAF50)      // Green
++        "Organisasi" -> Color(0xFF2196F3)    // Blue
++        "Keuangan" -> Color(0xFFFF9800)      // Orange
++        "Proyek" -> Color(0xFF9C27B0)        // Purple
++        "Pribadi" -> Color(0xFFE91E63)       // Pink
++        "Sosial" -> Color(0xFF00BCD4)        // Cyan
++        "Kesehatan" -> Color(0xFFF44336)     // Red
++        "Karier" -> Color(0xFF795548)        // Brown
++        else -> Color.Gray
++    }
++}
+Index: app/src/main/java/com/example/pam_1/ui/screens/features/finance/AddExpenseScreen.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/example/pam_1/ui/screens/features/finance/AddExpenseScreen.kt b/app/src/main/java/com/example/pam_1/ui/screens/features/finance/AddExpenseScreen.kt
+new file mode 100644
+--- /dev/null	(date 1765710424576)
++++ b/app/src/main/java/com/example/pam_1/ui/screens/features/finance/AddExpenseScreen.kt	(date 1765710424576)
+@@ -0,0 +1,228 @@
++package com.example.pam_1.ui.screens.features.finance
++
++import android.net.Uri
++import androidx.activity.compose.rememberLauncherForActivityResult
++import androidx.activity.result.contract.ActivityResultContracts
++import androidx.compose.foundation.clickable
++import androidx.compose.foundation.layout.*
++import androidx.compose.foundation.shape.RoundedCornerShape
++import androidx.compose.foundation.text.KeyboardOptions
++import androidx.compose.material.icons.Icons
++import androidx.compose.material.icons.filled.CameraAlt
++import androidx.compose.material3.*
++import androidx.compose.runtime.*
++import androidx.compose.ui.Alignment
++import androidx.compose.ui.Modifier
++import androidx.compose.ui.draw.drawBehind
++import androidx.compose.ui.geometry.CornerRadius
++import androidx.compose.ui.graphics.Color
++import androidx.compose.ui.graphics.PathEffect
++import androidx.compose.ui.graphics.drawscope.Stroke
++import androidx.compose.ui.text.input.KeyboardType
++import androidx.compose.ui.unit.Dp
++import androidx.compose.ui.unit.dp
++import coil.compose.AsyncImage
++import com.example.pam_1.ui.theme.PrimaryBrown
++import com.example.pam_1.viewmodel.ExpenseViewModel
++
++@OptIn(ExperimentalMaterial3Api::class)
++@Composable
++fun AddExpenseScreen(
++    viewModel: ExpenseViewModel,
++    onNavigateBack: () -> Unit = {}
++) {
++    val context = androidx.compose.ui.platform.LocalContext.current
++    val uiState by viewModel.uiState.collectAsState()
++
++    // PROPER EVENT-BASED NAVIGATION
++    // This collects navigation events ONCE and doesn't trigger recomposition
++    LaunchedEffect(Unit) {
++        viewModel.navigationEvent.collect { event ->
++            when (event) {
++                is com.example.pam_1.viewmodel.ExpenseNavigationEvent.NavigateBack -> {
++                    onNavigateBack()
++                }
++            }
++        }
++    }
++
++    /* ================= STATE ================= */
++
++    var title by remember { mutableStateOf("") }
++    var amount by remember { mutableStateOf("") }
++    var imageUri by remember { mutableStateOf<Uri?>(null) }
++
++    val categories = listOf("Akademik", "Organisasi", "Keuangan", "Proyek", "Pribadi", "Sosial", "Kesehatan", "Karier")
++    var selectedCategory by remember { mutableStateOf("") }
++    var expanded by remember { mutableStateOf(false) }
++
++    /* ================= IMAGE PICKER ================= */
++
++    val imagePicker = rememberLauncherForActivityResult(
++        contract = ActivityResultContracts.GetContent()
++    ) { uri ->
++        imageUri = uri
++    }
++
++    /* ================= UI ================= */
++
++    Column(
++        modifier = Modifier
++            .fillMaxSize()
++            .padding(20.dp),
++        verticalArrangement = Arrangement.spacedBy(16.dp)
++    ) {
++
++        Text(
++            text = "Add Expense",
++            style = MaterialTheme.typography.headlineMedium
++        )
++
++        /* ===== Upload Image ===== */
++        Box(
++            modifier = Modifier
++                .fillMaxWidth()
++                .height(160.dp)
++                .dashedBorder(PrimaryBrown, 12.dp)
++                .clickable { imagePicker.launch("image/*") },
++            contentAlignment = Alignment.Center
++        ) {
++            if (imageUri != null) {
++                AsyncImage(
++                    model = imageUri,
++                    contentDescription = "Expense Image",
++                    modifier = Modifier.fillMaxSize()
++                )
++            } else {
++                Icon(
++                    imageVector = Icons.Default.CameraAlt,
++                    contentDescription = "Upload Image",
++                    tint = PrimaryBrown,
++                    modifier = Modifier.size(36.dp)
++                )
++            }
++        }
++
++        /* ===== Category ===== */
++        ExposedDropdownMenuBox(
++            expanded = expanded,
++            onExpandedChange = { expanded = !expanded }
++        ) {
++            OutlinedTextField(
++                value = selectedCategory,
++                onValueChange = {},
++                readOnly = true,
++                label = { Text("Kategori") },
++                trailingIcon = {
++                    ExposedDropdownMenuDefaults.TrailingIcon(expanded)
++                },
++                modifier = Modifier
++                    .menuAnchor()
++                    .fillMaxWidth(),
++                shape = RoundedCornerShape(12.dp)
++            )
++
++            ExposedDropdownMenu(
++                expanded = expanded,
++                onDismissRequest = { expanded = false }
++            ) {
++                categories.forEach { category ->
++                    DropdownMenuItem(
++                        text = { Text(category) },
++                        onClick = {
++                            selectedCategory = category
++                            expanded = false
++                        }
++                    )
++                }
++            }
++        }
++
++        /* ===== Title ===== */
++        OutlinedTextField(
++            value = title,
++            onValueChange = { title = it },
++            label = { Text("Nama Pengeluaran") },
++            modifier = Modifier.fillMaxWidth(),
++            shape = RoundedCornerShape(12.dp)
++        )
++
++        /* ===== Amount ===== */
++        OutlinedTextField(
++            value = amount,
++            onValueChange = { amount = it },
++            label = { Text("Jumlah") },
++            keyboardOptions = KeyboardOptions(
++                keyboardType = KeyboardType.Number
++            ),
++            modifier = Modifier.fillMaxWidth(),
++            shape = RoundedCornerShape(12.dp)
++        )
++
++        /* ===== Submit ===== */
++        Button(
++            onClick = {
++                if (
++                    title.isNotBlank() &&
++                    amount.isNotBlank() &&
++                    selectedCategory.isNotBlank()
++                ) {
++                    viewModel.addExpense(
++                        context = context,
++                        title = title,
++                        amount = amount.toLong(),
++                        category = selectedCategory,
++                        imageUri = imageUri
++                    )
++                }
++            },
++            modifier = Modifier
++                .fillMaxWidth()
++                .height(50.dp),
++            colors = ButtonDefaults.buttonColors(
++                containerColor = PrimaryBrown
++            ),
++            enabled = uiState !is com.example.pam_1.viewmodel.ExpenseUiState.Loading
++        ) {
++            if (uiState is com.example.pam_1.viewmodel.ExpenseUiState.Loading) {
++                CircularProgressIndicator(
++                    color = Color.White,
++                    modifier = Modifier.size(24.dp)
++                )
++            } else {
++                Text("Simpan", color = Color.White)
++            }
++        }
++
++        // Show error if any
++        if (uiState is com.example.pam_1.viewmodel.ExpenseUiState.Error) {
++            val errorMessage = (uiState as com.example.pam_1.viewmodel.ExpenseUiState.Error).message
++            Text(
++                text = errorMessage,
++                color = MaterialTheme.colorScheme.error,
++                style = MaterialTheme.typography.bodySmall
++            )
++        }
++    }
++}
++
++/* ================= DASHED BORDER ================= */
++
++fun Modifier.dashedBorder(
++    color: Color,
++    cornerRadius: Dp
++) = drawBehind {
++    val stroke = Stroke(
++        width = 3f,
++        pathEffect = PathEffect.dashPathEffect(
++            floatArrayOf(12f, 12f),
++            0f
++        )
++    )
++
++    drawRoundRect(
++        color = color,
++        style = stroke,
++        cornerRadius = CornerRadius(cornerRadius.toPx())
++    )
++}
