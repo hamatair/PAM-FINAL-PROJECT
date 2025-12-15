@@ -5,11 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.pam_1.data.model.Expense
 import com.example.pam_1.data.repository.ExpenseRepository
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 
 /* ================= UI STATE ================= */
@@ -17,7 +14,7 @@ import kotlinx.coroutines.launch
 sealed class ExpenseUiState {
     object Idle : ExpenseUiState()
     object Loading : ExpenseUiState()
-    object Success : ExpenseUiState()  // Added Success state for navigation
+    object Success : ExpenseUiState() // Added Success state for navigation
     data class Error(val message: String) : ExpenseUiState()
 }
 
@@ -33,9 +30,7 @@ sealed class ExpenseDetailState {
 
 /* ================= VIEWMODEL ================= */
 
-class ExpenseViewModel(
-    private val repository: ExpenseRepository
-) : ViewModel() {
+class ExpenseViewModel(private val repository: ExpenseRepository) : ViewModel() {
 
     /* ----- UI STATE ----- */
     private val _uiState = MutableStateFlow<ExpenseUiState>(ExpenseUiState.Idle)
@@ -53,7 +48,7 @@ class ExpenseViewModel(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
-    private var hasLoadedOnce = false  // Track if initial load happened
+    private var hasLoadedOnce = false // Track if initial load happened
 
     // ✅ PERBAIKAN: TIDAK auto-fetch di init
     // Fetch akan dipanggil dari LaunchedEffect di Composable
@@ -64,7 +59,7 @@ class ExpenseViewModel(
     fun fetchExpenses() {
         // ✅ Prevent multiple simultaneous fetches
         if (_isLoading.value) return
-        
+
         viewModelScope.launch {
             _isLoading.value = true
             try {
@@ -75,9 +70,7 @@ class ExpenseViewModel(
             } catch (e: Exception) {
                 // Only set error if this is initial load
                 if (!hasLoadedOnce) {
-                    _uiState.value = ExpenseUiState.Error(
-                        e.message ?: "Failed to fetch expenses"
-                    )
+                    _uiState.value = ExpenseUiState.Error(e.message ?: "Failed to fetch expenses")
                 }
             } finally {
                 _isLoading.value = false
@@ -88,11 +81,11 @@ class ExpenseViewModel(
     /* ================= ADD EXPENSE ================= */
 
     fun addExpense(
-        context: android.content.Context,
-        title: String,
-        amount: Long,
-        category: String,
-        imageUri: Uri?
+            context: android.content.Context,
+            title: String,
+            amount: Long,
+            category: String,
+            imageUri: Uri?
     ) {
         viewModelScope.launch {
             _uiState.value = ExpenseUiState.Loading
@@ -101,7 +94,7 @@ class ExpenseViewModel(
                 // Upload image if exists
                 var imageUrl: String? = null
                 if (imageUri != null) {
-                    // Convert Uri to File
+                    // Convert Uri to File (suspend function)
                     val file = com.example.pam_1.utils.FileUtils.getFileFromUri(context, imageUri)
                     if (file != null) {
                         imageUrl = repository.uploadExpenseImage(file)
@@ -112,23 +105,19 @@ class ExpenseViewModel(
 
                 // Add expense to database
                 repository.addExpense(
-                    title = title,
-                    amount = amount,
-                    category = category,
-                    imageUrl = imageUrl
+                        title = title,
+                        amount = amount,
+                        category = category,
+                        imageUrl = imageUrl
                 )
-
 
                 // Refresh the list
                 fetchExpenses()
 
                 // Set Success state for navigation
                 _uiState.value = ExpenseUiState.Success
-
             } catch (e: Exception) {
-                _uiState.value = ExpenseUiState.Error(
-                    e.message ?: "Failed to add expense"
-                )
+                _uiState.value = ExpenseUiState.Error(e.message ?: "Failed to add expense")
             }
         }
     }
@@ -141,9 +130,7 @@ class ExpenseViewModel(
                 repository.deleteExpense(expenseId)
                 fetchExpenses() // Refresh list
             } catch (e: Exception) {
-                _uiState.value = ExpenseUiState.Error(
-                    e.message ?: "Failed to delete expense"
-                )
+                _uiState.value = ExpenseUiState.Error(e.message ?: "Failed to delete expense")
             }
         }
     }
@@ -155,15 +142,15 @@ class ExpenseViewModel(
             _detailState.value = ExpenseDetailState.Loading
             try {
                 val expense = repository.getExpenseById(expenseId)
-                _detailState.value = if (expense != null) {
-                    ExpenseDetailState.Success(expense)
-                } else {
-                    ExpenseDetailState.NotFound
-                }
+                _detailState.value =
+                        if (expense != null) {
+                            ExpenseDetailState.Success(expense)
+                        } else {
+                            ExpenseDetailState.NotFound
+                        }
             } catch (e: Exception) {
-                _detailState.value = ExpenseDetailState.Error(
-                    e.message ?: "Failed to fetch expense detail"
-                )
+                _detailState.value =
+                        ExpenseDetailState.Error(e.message ?: "Failed to fetch expense detail")
             }
         }
     }

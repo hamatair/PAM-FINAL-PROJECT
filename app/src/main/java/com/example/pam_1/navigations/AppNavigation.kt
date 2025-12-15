@@ -1,6 +1,5 @@
 package com.example.pam_1.navigations
 
-import android.util.Log
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -12,10 +11,10 @@ import com.example.pam_1.data.repository.*
 import com.example.pam_1.ui.screens.*
 import com.example.pam_1.ui.screens.features.auth.*
 import com.example.pam_1.ui.screens.features.events.*
+import com.example.pam_1.ui.screens.features.finance.*
 import com.example.pam_1.ui.screens.features.group_chat.*
 import com.example.pam_1.ui.screens.features.notes.*
 import com.example.pam_1.ui.screens.features.tugas.TugasScreen
-import com.example.pam_1.ui.screens.features.finance.*
 import com.example.pam_1.viewmodel.*
 import io.github.jan.supabase.auth.auth
 
@@ -28,9 +27,8 @@ fun AppNavigation() {
     val authRepository = remember { AuthRepository(context) }
     val userRepository = remember { UserRepository() }
 
-    val authViewModel: AuthViewModel = viewModel(
-        factory = AuthViewModelFactory(authRepository, userRepository)
-    )
+    val authViewModel: AuthViewModel =
+            viewModel(factory = AuthViewModelFactory(authRepository, userRepository))
 
     // ================= EVENT =================
     val eventRepository = remember { EventRepository(SupabaseClient.client) }
@@ -46,25 +44,23 @@ fun AppNavigation() {
     val memberRepository = remember { GroupMemberRepository() }
     val inviteRepository = remember { GroupInviteRepository() }
 
-    val studyGroupViewModel: StudyGroupViewModel = viewModel(
-        factory = StudyGroupViewModelFactory(
-            groupRepository,
-            memberRepository,
-            inviteRepository
-        )
-    )
+    val studyGroupViewModel: StudyGroupViewModel =
+            viewModel(
+                    factory =
+                            StudyGroupViewModelFactory(
+                                    groupRepository,
+                                    memberRepository,
+                                    inviteRepository
+                            )
+            )
 
     // ================= EXPENSE (SHARED) =================
     val expenseRepository = remember { ExpenseRepository() }
-    val expenseViewModel: ExpenseViewModel = viewModel(
-        factory = ExpenseViewModelFactory(expenseRepository)
-    )
+    val expenseViewModel: ExpenseViewModel =
+            viewModel(factory = ExpenseViewModelFactory(expenseRepository))
 
     // ================= NAV HOST =================
-    NavHost(
-        navController = navController,
-        startDestination = "splash"
-    ) {
+    NavHost(navController = navController, startDestination = "splash") {
 
         // ---------- AUTH ----------
         composable("splash") { SplashScreen(navController, authRepository) }
@@ -78,11 +74,11 @@ fun AppNavigation() {
         // ---------- HOME ----------
         composable("home") {
             MainAppScreen(
-                navController = navController,
-                authViewModel = authViewModel,
-                studyGroupViewModel = studyGroupViewModel,
-                noteViewModel = noteViewModel,
-                expenseViewModel = expenseViewModel
+                    navController = navController,
+                    authViewModel = authViewModel,
+                    studyGroupViewModel = studyGroupViewModel,
+                    noteViewModel = noteViewModel,
+                    expenseViewModel = expenseViewModel
             )
         }
 
@@ -96,16 +92,16 @@ fun AppNavigation() {
             val vm: EventViewModel = viewModel(factory = eventViewModelFactory)
             val userId = SupabaseClient.client.auth.currentUserOrNull()?.id ?: ""
             MyEventsScreen(
-                viewModel = vm,
-                currentUserId = userId,
-                onNavigateToDetail = { navController.navigateSafe("event_detail/$it") },
-                onNavigateBack = { navController.popBackStackSafe() }
+                    viewModel = vm,
+                    currentUserId = userId,
+                    onNavigateToDetail = { navController.navigateSafe("event_detail/$it") },
+                    onNavigateBack = { navController.popBackStackSafe() }
             )
         }
 
         composable(
-            "event_detail/{eventId}",
-            arguments = listOf(navArgument("eventId") { type = NavType.StringType })
+                "event_detail/{eventId}",
+                arguments = listOf(navArgument("eventId") { type = NavType.StringType })
         ) {
             val eventId = it.arguments?.getString("eventId") ?: ""
             val vm: EventViewModel = viewModel(factory = eventViewModelFactory)
@@ -117,48 +113,40 @@ fun AppNavigation() {
         composable("create_group") { CreateEditGroupScreen(navController, studyGroupViewModel) }
 
         composable(
-            "edit_group/{groupId}",
-            listOf(navArgument("groupId") { type = NavType.LongType })
+                "edit_group/{groupId}",
+                listOf(navArgument("groupId") { type = NavType.LongType })
         ) {
             CreateEditGroupScreen(
-                navController,
-                studyGroupViewModel,
-                it.arguments!!.getLong("groupId")
+                    navController,
+                    studyGroupViewModel,
+                    it.arguments!!.getLong("groupId")
             )
         }
 
         composable(
-            "group_detail/{groupId}",
-            listOf(navArgument("groupId") { type = NavType.LongType })
+                "group_detail/{groupId}",
+                listOf(navArgument("groupId") { type = NavType.LongType })
         ) {
-            GroupDetailScreen(
-                navController,
-                studyGroupViewModel,
-                it.arguments!!.getLong("groupId")
-            )
+            GroupDetailScreen(navController, studyGroupViewModel, it.arguments!!.getLong("groupId"))
         }
 
         composable(
-            "manage_invites/{groupId}",
-            listOf(navArgument("groupId") { type = NavType.LongType })
+                "manage_invites/{groupId}",
+                listOf(navArgument("groupId") { type = NavType.LongType })
         ) {
             InviteManagementScreen(
-                navController,
-                studyGroupViewModel,
-                it.arguments!!.getLong("groupId")
+                    navController,
+                    studyGroupViewModel,
+                    it.arguments!!.getLong("groupId")
             )
         }
 
         composable(
-            "group_chat/{groupId}",
-            listOf(navArgument("groupId") { type = NavType.LongType })
-        ) {
-            GroupChatScreen(navController, it.arguments!!.getLong("groupId"))
-        }
+                "group_chat/{groupId}",
+                listOf(navArgument("groupId") { type = NavType.LongType })
+        ) { GroupChatScreen(navController, it.arguments!!.getLong("groupId")) }
 
-        composable("join_group") {
-            JoinGroupScreen(navController, studyGroupViewModel)
-        }
+        composable("join_group") { JoinGroupScreen(navController, studyGroupViewModel) }
 
         // ---------- TUGAS ----------
         composable("task_schedule") {
@@ -170,17 +158,15 @@ fun AppNavigation() {
         // ---------- NOTES ----------
         composable("note/add") {
             AddEditNoteScreen(
-                note = null,
-                onBack = { navController.popBackStackSafe() },
-                onSave = { t, d, p, img ->
-                    noteViewModel.addNote(t, d, p, img)
-                }
+                    note = null,
+                    onBack = { navController.popBackStackSafe() },
+                    onSave = { t, d, p, img -> noteViewModel.addNote(t, d, p, img) }
             )
         }
 
         composable(
-            "note/read/{noteId}",
-            listOf(navArgument("noteId") { type = NavType.LongType })
+                "note/read/{noteId}",
+                listOf(navArgument("noteId") { type = NavType.LongType })
         ) {
             val id = it.arguments!!.getLong("noteId")
             LaunchedEffect(id) { noteViewModel.loadNoteDetail(id) }
@@ -188,18 +174,18 @@ fun AppNavigation() {
             val state by noteViewModel.noteDetailState.collectAsState()
             if (state is UiState.Success) {
                 ReadNoteScreen(
-                    note = (state as UiState.Success).data!!,
-                    onBack = { navController.popBackStackSafe() },
-                    onEditNote = { navController.navigateSafe("note/edit/$it") },
-                    onPinToggle = { p -> noteViewModel.updatePinStatus(id, p) },
-                    onDelete = { noteViewModel.deleteNote(it) }
+                        note = (state as UiState.Success).data!!,
+                        onBack = { navController.popBackStackSafe() },
+                        onEditNote = { navController.navigateSafe("note/edit/$it") },
+                        onPinToggle = { p -> noteViewModel.updatePinStatus(id, p) },
+                        onDelete = { noteViewModel.deleteNote(it) }
                 )
             }
         }
 
         composable(
-            "note/edit/{noteId}",
-            listOf(navArgument("noteId") { type = NavType.LongType })
+                "note/edit/{noteId}",
+                listOf(navArgument("noteId") { type = NavType.LongType })
         ) {
             val id = it.arguments!!.getLong("noteId")
             LaunchedEffect(id) { noteViewModel.loadNoteDetail(id) }
@@ -207,30 +193,26 @@ fun AppNavigation() {
             val state by noteViewModel.noteDetailState.collectAsState()
             if (state is UiState.Success) {
                 AddEditNoteScreen(
-                    note = (state as UiState.Success).data,
-                    onBack = { navController.popBackStackSafe() },
-                    onSave = { t, d, p, img ->
-                        noteViewModel.updateNote(id, t, d, p, img)
-                    }
+                        note = (state as UiState.Success).data,
+                        onBack = { navController.popBackStackSafe() },
+                        onSave = { t, d, p, img ->
+                            val currentImage = (state as? UiState.Success)?.data?.imageUrl
+                            noteViewModel.updateNote(id, t, d, p, img, currentImage)
+                        }
                 )
             }
         }
 
         // ---------- EXPENSE ----------
         composable("add_expense") {
-            AddExpenseScreen(expenseViewModel) {
-                navController.popBackStackSafe()
-            }
+            AddExpenseScreen(expenseViewModel) { navController.popBackStackSafe() }
         }
 
         composable(
-            "expense_detail/{expenseId}",
-            listOf(navArgument("expenseId") { type = NavType.IntType })
+                "expense_detail/{expenseId}",
+                listOf(navArgument("expenseId") { type = NavType.IntType })
         ) {
-            ExpenseDetailScreen(
-                it.arguments!!.getInt("expenseId"),
-                expenseViewModel
-            ) {
+            ExpenseDetailScreen(it.arguments!!.getInt("expenseId"), expenseViewModel) {
                 navController.popBackStackSafe()
             }
         }
