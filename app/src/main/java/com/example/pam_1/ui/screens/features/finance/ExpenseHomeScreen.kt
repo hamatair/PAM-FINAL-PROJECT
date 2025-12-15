@@ -39,8 +39,6 @@ fun ExpenseHomeScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val totalExpense = expenses.sumOf { it.amount }
 
-    // ✅ PENTING: Trigger initial fetch saat screen pertama kali muncul
-    // LaunchedEffect dengan key Unit = hanya run sekali saat composition
     LaunchedEffect(Unit) {
         // Fetch data setelah auth session ready
         viewModel.fetchExpenses()
@@ -129,7 +127,7 @@ fun ExpenseHomeScreen(
             /* ================= LIST EXPENSE ================= */
             items(
                 items = expenses,
-                key = { expense -> expense.id ?: 0 } // ✅ PENTING: key untuk mencegah bug recomposition
+                key = { expense -> expense.id ?: 0 } 
             ) { expense ->
                 ExpenseItem(
                     expense = expense,
@@ -292,7 +290,7 @@ fun ExpensePieChart(
                             center.y - radius
                         ),
                         size = androidx.compose.ui.geometry.Size(radius * 2, radius * 2),
-                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokeWidth)  // ← Stroke instead of fill
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokeWidth)  
                     )
                     
                     startAngle += sweepAngle
@@ -317,7 +315,7 @@ fun ExpensePieChart(
                 )
             }
         }
-        // ✅ Legend removed - kategori info ada di history list
+       
     }
 }
 

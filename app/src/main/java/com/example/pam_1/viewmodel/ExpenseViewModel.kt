@@ -50,9 +50,6 @@ class ExpenseViewModel(private val repository: ExpenseRepository) : ViewModel() 
 
     private var hasLoadedOnce = false // Track if initial load happened
 
-    // ✅ PERBAIKAN: TIDAK auto-fetch di init
-    // Fetch akan dipanggil dari LaunchedEffect di Composable
-    // setelah Supabase session benar-benar ready
 
     /* ================= FETCH EXPENSES (READ) ================= */
 
