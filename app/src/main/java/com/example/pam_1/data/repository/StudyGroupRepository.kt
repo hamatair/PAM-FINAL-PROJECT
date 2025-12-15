@@ -93,6 +93,17 @@ class StudyGroupRepository {
     suspend fun deleteGroup(groupId: Long): Result<Unit> =
             withContext(Dispatchers.IO) {
                 try {
+                    // Manual Cascade Delete to avoid FK violation
+                    // 1. Delete Invites
+                    client.from("group_invites").delete { filter { eq("group_id", groupId) } }
+
+                    // 2. Delete Messages (if using group_messages table)
+                    client.from("group_messages").delete { filter { eq("group_id", groupId) } }
+
+                    // 3. Delete Members
+                    client.from("group_members").delete { filter { eq("group_id", groupId) } }
+
+                    // 4. Finally Delete Group
                     client.from("study_groups").delete { filter { eq("id", groupId) } }
 
                     Result.success(Unit)

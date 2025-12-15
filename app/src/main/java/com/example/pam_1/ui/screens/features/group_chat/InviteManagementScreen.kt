@@ -1,5 +1,8 @@
 package com.example.pam_1.ui.screens.features.group_chat
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -220,6 +223,24 @@ fun InviteCard(invite: GroupInvite, onDeactivate: () -> Unit) {
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    // Copy Code Button
+                    val context = LocalContext.current
+                    OutlinedButton(
+                            onClick = {
+                                val clipboard =
+                                        context.getSystemService(Context.CLIPBOARD_SERVICE) as
+                                                ClipboardManager
+                                val clip = ClipData.newPlainText("Invite Code", invite.code)
+                                clipboard.setPrimaryClip(clip)
+                                Toast.makeText(context, "Kode disalin!", Toast.LENGTH_SHORT).show()
+                            },
+                            modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Default.ContentCopy, null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Salin")
+                    }
+
                     OutlinedButton(
                             onClick = {
                                 // TODO: Show QR code
@@ -228,20 +249,23 @@ fun InviteCard(invite: GroupInvite, onDeactivate: () -> Unit) {
                     ) {
                         Icon(Icons.Default.QrCode, null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("Kode QR")
+                        Text("QR")
                     }
 
-                    OutlinedButton(
+                    Button(
                             onClick = { showDeactivateDialog = true },
                             modifier = Modifier.weight(1f),
                             colors =
-                                    ButtonDefaults.outlinedButtonColors(
-                                            contentColor = MaterialTheme.colorScheme.error
+                                    ButtonDefaults.buttonColors(
+                                            containerColor =
+                                                    MaterialTheme.colorScheme.errorContainer,
+                                            contentColor =
+                                                    MaterialTheme.colorScheme.onErrorContainer
                                     )
                     ) {
-                        Icon(Icons.Default.Cancel, null, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Block, null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("Nonaktifkan")
+                        // Text("Nonaktifkan")
                     }
                 }
             }

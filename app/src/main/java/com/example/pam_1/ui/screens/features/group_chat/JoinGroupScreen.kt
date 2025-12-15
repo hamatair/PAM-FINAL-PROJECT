@@ -30,13 +30,9 @@ fun JoinGroupScreen(navController: NavController, viewModel: StudyGroupViewModel
         when (uiState) {
             is StudyGroupUIState.Success -> {
                 Toast.makeText(context, uiState.message, Toast.LENGTH_SHORT).show()
+                // Clear input
+                inviteCode = ""
                 viewModel.resetState()
-                // Navigate to the group detail
-                viewModel.selectedGroup?.id?.let { groupId ->
-                    navController.navigate("group_detail/$groupId") {
-                        popUpTo("join_group") { inclusive = true }
-                    }
-                }
             }
             is StudyGroupUIState.Error -> {
                 Toast.makeText(context, uiState.message, Toast.LENGTH_SHORT).show()

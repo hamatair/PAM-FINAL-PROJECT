@@ -53,9 +53,14 @@ fun CreateEditGroupScreen(
         when (uiState) {
             is StudyGroupUIState.Success -> {
                 Toast.makeText(context, uiState.message, Toast.LENGTH_SHORT).show()
+                // Clear fields on success
+                if (!isEditMode) {
+                    name = ""
+                    description = ""
+                    course = ""
+                    isPublic = true
+                }
                 viewModel.resetState()
-                // Navigate back to study groups list
-                navController.popBackStack(route = "study_groups", inclusive = false)
             }
             is StudyGroupUIState.Error -> {
                 Toast.makeText(context, uiState.message, Toast.LENGTH_SHORT).show()

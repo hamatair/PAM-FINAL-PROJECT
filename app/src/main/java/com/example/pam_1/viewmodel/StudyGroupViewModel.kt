@@ -56,17 +56,21 @@ class StudyGroupViewModel(
     }
 
     /** Load groups where user is a member */
-    fun loadMyGroups() {
+    fun loadMyGroups(silent: Boolean = false) {
         viewModelScope.launch {
-            uiState = StudyGroupUIState.Loading
+            if (!silent) uiState = StudyGroupUIState.Loading
             groupRepository
                     .getMyGroups()
                     .onSuccess { groups ->
                         myGroups = groups
-                        uiState = StudyGroupUIState.Idle
+                        if (!silent) uiState = StudyGroupUIState.Idle
                     }
                     .onFailure { e ->
-                        uiState = StudyGroupUIState.Error(e.message ?: "Failed to load groups")
+                        if (!silent)
+                                uiState =
+                                        StudyGroupUIState.Error(
+                                                e.message ?: "Failed to load groups"
+                                        )
                     }
         }
     }
@@ -102,7 +106,7 @@ class StudyGroupViewModel(
                     .onSuccess { group ->
                         selectedGroup = group
                         uiState = StudyGroupUIState.Success("Group created successfully")
-                        loadMyGroups() // Refresh the list
+                        loadMyGroups(silent = true) // Refresh silently to keep Success message
                     }
                     .onFailure { e ->
                         uiState = StudyGroupUIState.Error(e.message ?: "Failed to create group")
@@ -132,7 +136,7 @@ class StudyGroupViewModel(
                     .onSuccess { group ->
                         selectedGroup = group
                         uiState = StudyGroupUIState.Success("Group updated successfully")
-                        loadMyGroups()
+                        loadMyGroups(silent = true)
                     }
                     .onFailure { e ->
                         uiState = StudyGroupUIState.Error(e.message ?: "Failed to update group")
@@ -149,7 +153,7 @@ class StudyGroupViewModel(
                     .onSuccess {
                         uiState = StudyGroupUIState.Success("Group deleted successfully")
                         selectedGroup = null
-                        loadMyGroups()
+                        loadMyGroups(silent = true)
                     }
                     .onFailure { e ->
                         uiState = StudyGroupUIState.Error(e.message ?: "Failed to delete group")
@@ -212,7 +216,7 @@ class StudyGroupViewModel(
                     .onSuccess {
                         uiState = StudyGroupUIState.Success("Left group successfully")
                         selectedGroup = null
-                        loadMyGroups()
+                        loadMyGroups(silent = true)
                     }
                     .onFailure { e ->
                         uiState = StudyGroupUIState.Error(e.message ?: "Failed to leave group")
@@ -289,8 +293,8 @@ class StudyGroupViewModel(
                     .joinByCode(code)
                     .onSuccess { groupId ->
                         uiState = StudyGroupUIState.Success("Joined group successfully")
-                        loadGroupById(groupId)
-                        loadMyGroups()
+                        // No need to load group details immediately as we stay on list/join screen
+                        loadMyGroups(silent = true)
                     }
                     .onFailure { e ->
                         uiState = StudyGroupUIState.Error(e.message ?: "Failed to join group")
