@@ -41,11 +41,17 @@ fun NotesListScreen(
 ) {
     val noteState by viewModel.noteListState.collectAsState()
 
+    // Setiap kali layar ini masuk komposisi (ditampilkan),
+    // panggil loadNotes() untuk mengambil data terbaru.
+    // 'Unit' berarti hanya dijalankan sekali saat layar pertama kali muncul.
+    LaunchedEffect(Unit) {
+        viewModel.loadNotes()
+    }
+    // ==========================================
+
     // State untuk menyimpan Note mana yang sedang ditekan lama
-    // Jika null, berarti menu sedang tertutup
     var selectedNote by remember { mutableStateOf<Note?>(null) }
 
-    // State untuk kontrol BottomSheet
     val sheetState = rememberModalBottomSheetState()
     val scope = rememberCoroutineScope()
 
@@ -78,7 +84,8 @@ fun NotesListScreen(
             Divider(thickness = 1.dp, color = Color(0xFFDDDDDD))
 
             when (noteState) {
-                is UiState.Loading -> {
+                // Saat IDLE (belum load) atau LOADING, tampilkan loading
+                is UiState.Idle, is UiState.Loading -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
                     }
@@ -89,7 +96,8 @@ fun NotesListScreen(
 
                     if (notes.isEmpty()) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("Belum ada catatan")
+                            // Perbaikan wording sesuai request sebelumnya
+                            Text("Belum memiliki catatan")
                         }
                     } else {
                         LazyVerticalStaggeredGrid(
@@ -104,7 +112,6 @@ fun NotesListScreen(
                                     note = note,
                                     onClick = { note.id?.let { onNoteClick(it) } },
                                     onLongClick = {
-                                        // Saat ditahan lama, simpan note ke state agar menu muncul
                                         selectedNote = note
                                     }
                                 )
@@ -121,7 +128,6 @@ fun NotesListScreen(
                         )
                     }
                 }
-                else -> {}
             }
         }
 
@@ -136,11 +142,10 @@ fun NotesListScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 24.dp) // Padding bawah agar tidak mepet navigasi HP
+                        .padding(bottom = 24.dp)
                 ) {
                     val note = selectedNote!!
 
-                    // --- OPSI 1: SEMATKAN / LEPAS SEMATAN ---
                     ListItem(
                         headlineContent = {
                             Text(if (note.isPinned) "Lepas Sematan" else "Sematkan")
@@ -153,18 +158,15 @@ fun NotesListScreen(
                             )
                         },
                         modifier = Modifier.clickable {
-                            // Aksi Pin
                             note.id?.let { id ->
                                 viewModel.updatePinStatus(id, !note.isPinned)
                             }
-                            // Tutup Menu
                             scope.launch { sheetState.hide() }.invokeOnCompletion {
                                 selectedNote = null
                             }
                         }
                     )
 
-                    // --- OPSI 2: HAPUS (MERAH) ---
                     ListItem(
                         headlineContent = {
                             Text("Hapus", color = Color.Red, fontWeight = FontWeight.Bold)
@@ -177,11 +179,9 @@ fun NotesListScreen(
                             )
                         },
                         modifier = Modifier.clickable {
-                            // Aksi Hapus
                             note.id?.let { id ->
                                 viewModel.deleteNote(id)
                             }
-                            // Tutup Menu
                             scope.launch { sheetState.hide() }.invokeOnCompletion {
                                 selectedNote = null
                             }
@@ -198,21 +198,20 @@ fun NotesListScreen(
 fun NoteCard(
     note: Note,
     onClick: () -> Unit,
-    onLongClick: () -> Unit // Callback baru untuk Long Press
+    onLongClick: () -> Unit
 ) {
     val rawDate = note.updatedAt ?: note.createdAt
     val displayDate = rawDate?.substringBefore("T") ?: ""
 
     Surface(
-        // Hapus onClick dari Surface, kita pindahkan ke Modifier.combinedClickable
         shape = RoundedCornerShape(16.dp),
         tonalElevation = 3.dp,
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp)) // Clip agar ripple effect rapi
+            .clip(RoundedCornerShape(16.dp))
             .combinedClickable(
                 onClick = onClick,
-                onLongClick = onLongClick // Ini yang mendeteksi tahan lama
+                onLongClick = onLongClick
             )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -250,7 +249,6 @@ fun NoteCard(
                     color = Color.Gray
                 )
 
-                // Ikon Pin HANYA sebagai indikator visual (tidak bisa diklik di sini)
                 if (note.isPinned) {
                     Icon(
                         imageVector = Icons.Default.PushPin,
