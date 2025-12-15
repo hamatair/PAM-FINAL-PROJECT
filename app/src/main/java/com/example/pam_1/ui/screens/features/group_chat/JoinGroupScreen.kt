@@ -49,10 +49,10 @@ fun JoinGroupScreen(navController: NavController, viewModel: StudyGroupViewModel
     Scaffold(
             topBar = {
                 TopAppBar(
-                        title = { Text("Join Group") },
+                        title = { Text("Gabung Grup") },
                         navigationIcon = {
                             IconButton(onClick = { navController.popBackStack() }) {
-                                Icon(Icons.Default.ArrowBack, "Back")
+                                Icon(Icons.Default.ArrowBack, "Kembali")
                             }
                         }
                 )
@@ -64,14 +64,14 @@ fun JoinGroupScreen(navController: NavController, viewModel: StudyGroupViewModel
                 verticalArrangement = Arrangement.Center
         ) {
             Text(
-                    "Join Study Group",
+                    "Gabung Grup Belajar",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold
             )
             Spacer(Modifier.height(16.dp))
 
             Text(
-                    "Enter the invite code to join a study group",
+                    "Masukkan kode undangan untuk bergabung ke grup belajar",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -84,15 +84,15 @@ fun JoinGroupScreen(navController: NavController, viewModel: StudyGroupViewModel
                         inviteCode = it.uppercase()
                         codeError = false
                     },
-                    label = { Text("Invite Code") },
+                    label = { Text("Kode Undangan") },
                     modifier = Modifier.fillMaxWidth(),
                     isError = codeError,
                     singleLine = true,
-                    placeholder = { Text("e.g., ABC123") },
+                    placeholder = { Text("cth., ABC123") },
                     supportingText = {
                         if (codeError)
                                 Text(
-                                        text = "Please enter a valid invite code",
+                                        text = "Silakan masukkan kode undangan yang valid",
                                         color = MaterialTheme.colorScheme.error
                                 )
                     }
@@ -111,7 +111,7 @@ fun JoinGroupScreen(navController: NavController, viewModel: StudyGroupViewModel
                                 codeError = true
                                 Toast.makeText(
                                                 context,
-                                                "Please enter a valid invite code",
+                                                "Silakan masukkan kode undangan yang valid",
                                                 Toast.LENGTH_SHORT
                                         )
                                         .show()
@@ -121,14 +121,18 @@ fun JoinGroupScreen(navController: NavController, viewModel: StudyGroupViewModel
                             viewModel.joinByInviteCode(inviteCode)
                         },
                         modifier = Modifier.fillMaxWidth().height(50.dp)
-                ) { Text("Join Group") }
+                ) { Text("Gabung Grup") }
 
                 Spacer(Modifier.height(16.dp))
 
                 OutlinedButton(
                         onClick = {
                             // TODO: Implement QR scanner
-                            Toast.makeText(context, "QR Scanner coming soon", Toast.LENGTH_SHORT)
+                            Toast.makeText(
+                                            context,
+                                            "Pemindai QR akan segera hadir",
+                                            Toast.LENGTH_SHORT
+                                    )
                                     .show()
                             // navController.navigate("scan_qr")
                         },
@@ -140,7 +144,7 @@ fun JoinGroupScreen(navController: NavController, viewModel: StudyGroupViewModel
                             modifier = Modifier.size(20.dp)
                     )
                     Spacer(Modifier.width(8.dp))
-                    Text("Scan QR Code")
+                    Text("Pindai Kode QR")
                 }
             }
         }

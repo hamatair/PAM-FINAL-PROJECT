@@ -58,10 +58,10 @@ fun GroupDetailScreen(navController: NavController, viewModel: StudyGroupViewMod
     Scaffold(
             topBar = {
                 TopAppBar(
-                        title = { Text(group?.name ?: "Group Detail") },
+                        title = { Text(group?.name ?: "Detail Grup") },
                         navigationIcon = {
                             IconButton(onClick = { navController.popBackStack() }) {
-                                Icon(Icons.Default.ArrowBack, "Back")
+                                Icon(Icons.Default.ArrowBack, "Kembali")
                             }
                         },
                         actions = {
@@ -70,7 +70,7 @@ fun GroupDetailScreen(navController: NavController, viewModel: StudyGroupViewMod
                                         onClick = { navController.navigate("edit_group/$groupId") }
                                 ) { Icon(Icons.Default.Edit, "Edit") }
                                 IconButton(onClick = { showDeleteDialog = true }) {
-                                    Icon(Icons.Default.Delete, "Delete")
+                                    Icon(Icons.Default.Delete, "Hapus")
                                 }
                             }
                         }
@@ -119,7 +119,7 @@ fun GroupDetailScreen(navController: NavController, viewModel: StudyGroupViewMod
                         group.course?.let { course ->
                             Spacer(Modifier.height(8.dp))
                             Text(
-                                    text = "Course: $course",
+                                    text = "Mata Kuliah: $course",
                                     style = MaterialTheme.typography.titleMedium
                             )
                         }
@@ -132,14 +132,14 @@ fun GroupDetailScreen(navController: NavController, viewModel: StudyGroupViewMod
                         Spacer(Modifier.height(8.dp))
                         Text(
                                 text =
-                                        "$memberCount ${if (memberCount == 1) "member" else "members"}",
+                                        "$memberCount ${if (memberCount == 1) "anggota" else "anggota"}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
 
                         userRole?.let { role ->
                             Text(
-                                    text = "Your role: ${role.value}",
+                                    text = "Peran Anda: ${role.value}",
                                     style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.primary
@@ -160,7 +160,7 @@ fun GroupDetailScreen(navController: NavController, viewModel: StudyGroupViewMod
                         ) {
                             Icon(Icons.Default.Share, null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(4.dp))
-                            Text("Invites")
+                            Text("Undangan")
                         }
                     }
 
@@ -175,7 +175,7 @@ fun GroupDetailScreen(navController: NavController, viewModel: StudyGroupViewMod
                         ) {
                             Icon(Icons.Default.ExitToApp, null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(4.dp))
-                            Text("Leave")
+                            Text("Keluar")
                         }
                     }
 
@@ -186,7 +186,7 @@ fun GroupDetailScreen(navController: NavController, viewModel: StudyGroupViewMod
                         ) {
                             Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(4.dp))
-                            Text("Join Group")
+                            Text("Gabung Grup")
                         }
                     }
                 }
@@ -198,12 +198,12 @@ fun GroupDetailScreen(navController: NavController, viewModel: StudyGroupViewMod
                     Tab(
                             selected = selectedTab == 0,
                             onClick = { selectedTab = 0 },
-                            text = { Text("Members") }
+                            text = { Text("Anggota") }
                     )
                     Tab(
                             selected = selectedTab == 1,
                             onClick = { selectedTab = 1 },
-                            text = { Text("Chat") }
+                            text = { Text("Obrolan") }
                     )
                 }
 
@@ -252,10 +252,10 @@ fun GroupDetailScreen(navController: NavController, viewModel: StudyGroupViewMod
     if (showDeleteDialog) {
         AlertDialog(
                 onDismissRequest = { showDeleteDialog = false },
-                title = { Text("Delete Group") },
+                title = { Text("Hapus Grup") },
                 text = {
                     Text(
-                            "Are you sure you want to delete this group? This action cannot be undone."
+                            "Apakah Anda yakin ingin menghapus grup ini? Tindakan ini tidak dapat dibatalkan."
                     )
                 },
                 confirmButton = {
@@ -268,10 +268,10 @@ fun GroupDetailScreen(navController: NavController, viewModel: StudyGroupViewMod
                                     ButtonDefaults.textButtonColors(
                                             contentColor = MaterialTheme.colorScheme.error
                                     )
-                    ) { Text("Delete") }
+                    ) { Text("Hapus") }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showDeleteDialog = false }) { Text("Cancel") }
+                    TextButton(onClick = { showDeleteDialog = false }) { Text("Batal") }
                 }
         )
     }
@@ -280,18 +280,18 @@ fun GroupDetailScreen(navController: NavController, viewModel: StudyGroupViewMod
     if (showLeaveDialog) {
         AlertDialog(
                 onDismissRequest = { showLeaveDialog = false },
-                title = { Text("Leave Group") },
-                text = { Text("Are you sure you want to leave this group?") },
+                title = { Text("Keluar dari Grup") },
+                text = { Text("Apakah Anda yakin ingin keluar dari grup ini?") },
                 confirmButton = {
                     TextButton(
                             onClick = {
                                 viewModel.leaveGroup(groupId)
                                 showLeaveDialog = false
                             }
-                    ) { Text("Leave") }
+                    ) { Text("Keluar") }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showLeaveDialog = false }) { Text("Cancel") }
+                    TextButton(onClick = { showLeaveDialog = false }) { Text("Batal") }
                 }
         )
     }
@@ -375,7 +375,7 @@ fun MemberCard(
                     DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
                         if (isOwner && role != GroupRole.MODERATOR) {
                             DropdownMenuItem(
-                                    text = { Text("Make Moderator") },
+                                    text = { Text("Jadikan Moderator") },
                                     onClick = {
                                         onChangeRole(GroupRole.MODERATOR)
                                         showMenu = false
@@ -384,7 +384,7 @@ fun MemberCard(
                         }
                         if (isOwner && role != GroupRole.MEMBER) {
                             DropdownMenuItem(
-                                    text = { Text("Make Member") },
+                                    text = { Text("Jadikan Anggota") },
                                     onClick = {
                                         onChangeRole(GroupRole.MEMBER)
                                         showMenu = false
@@ -392,7 +392,7 @@ fun MemberCard(
                             )
                         }
                         DropdownMenuItem(
-                                text = { Text("Remove") },
+                                text = { Text("Hapus") },
                                 onClick = {
                                     onRemove()
                                     showMenu = false

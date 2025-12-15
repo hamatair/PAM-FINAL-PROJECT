@@ -68,10 +68,10 @@ fun CreateEditGroupScreen(
     Scaffold(
             topBar = {
                 TopAppBar(
-                        title = { Text(if (isEditMode) "Edit Group" else "Create Group") },
+                        title = { Text(if (isEditMode) "Edit Grup" else "Buat Grup") },
                         navigationIcon = {
                             IconButton(onClick = { navController.popBackStack() }) {
-                                Icon(Icons.Default.ArrowBack, "Back")
+                                Icon(Icons.Default.ArrowBack, "Kembali")
                             }
                         }
                 )
@@ -87,12 +87,12 @@ fun CreateEditGroupScreen(
         ) {
             Text(
                     text =
-                            if (isEditMode) "Update your study group"
-                            else "Create a new study group",
+                            if (isEditMode) "Perbarui grup belajar Anda"
+                            else "Buat grup belajar baru",
                     style = MaterialTheme.typography.headlineSmall
             )
             Text(
-                    text = "Fill in the details below",
+                    text = "Isi detail di bawah ini",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -106,14 +106,14 @@ fun CreateEditGroupScreen(
                         name = it
                         nameError = false
                     },
-                    label = { Text("Group Name") },
+                    label = { Text("Nama Grup") },
                     modifier = Modifier.fillMaxWidth(),
                     isError = nameError,
                     singleLine = true,
                     supportingText = {
                         if (nameError)
                                 Text(
-                                        text = "Group name is required",
+                                        text = "Nama grup wajib diisi",
                                         color = MaterialTheme.colorScheme.error
                                 )
                     }
@@ -124,10 +124,10 @@ fun CreateEditGroupScreen(
             OutlinedTextField(
                     value = course,
                     onValueChange = { course = it },
-                    label = { Text("Course (Optional)") },
+                    label = { Text("Mata Kuliah (Opsional)") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    placeholder = { Text("e.g., Pemrograman Mobile") }
+                    placeholder = { Text("cth., Pemrograman Mobile") }
             )
             Spacer(Modifier.height(16.dp))
 
@@ -135,11 +135,11 @@ fun CreateEditGroupScreen(
             OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
-                    label = { Text("Description (Optional)") },
+                    label = { Text("Deskripsi (Opsional)") },
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 3,
                     maxLines = 5,
-                    placeholder = { Text("Describe what this group is about...") }
+                    placeholder = { Text("Jelaskan tentang grup ini...") }
             )
             Spacer(Modifier.height(16.dp))
 
@@ -150,9 +150,9 @@ fun CreateEditGroupScreen(
                     verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(text = "Public Group", style = MaterialTheme.typography.titleMedium)
+                    Text(text = "Grup Publik", style = MaterialTheme.typography.titleMedium)
                     Text(
-                            text = "Anyone can join without an invite code",
+                            text = "Siapa saja dapat bergabung tanpa kode undangan",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -175,7 +175,7 @@ fun CreateEditGroupScreen(
                                 nameError = true
                                 Toast.makeText(
                                                 context,
-                                                "Please enter a group name",
+                                                "Silakan masukkan nama grup",
                                                 Toast.LENGTH_SHORT
                                         )
                                         .show()
@@ -202,7 +202,7 @@ fun CreateEditGroupScreen(
                         },
                         modifier = Modifier.fillMaxWidth().height(56.dp),
                         shape = MaterialTheme.shapes.medium
-                ) { Text(if (isEditMode) "Update Group" else "Create Group") }
+                ) { Text(if (isEditMode) "Perbarui Grup" else "Buat Grup") }
             }
         }
     }

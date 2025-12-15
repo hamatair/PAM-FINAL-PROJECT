@@ -56,12 +56,12 @@ fun StudyGroupListScreen(navController: NavController, viewModel: StudyGroupView
                 Tab(
                         selected = selectedTab == 0,
                         onClick = { selectedTab = 0 },
-                        text = { Text("My Groups") }
+                        text = { Text("Grup Saya") }
                 )
                 Tab(
                         selected = selectedTab == 1,
                         onClick = { selectedTab = 1 },
-                        text = { Text("Public Groups") }
+                        text = { Text("Grup Publik") }
                 )
             }
 
@@ -77,7 +77,7 @@ fun StudyGroupListScreen(navController: NavController, viewModel: StudyGroupView
                                     onGroupClick = { group ->
                                         navController.navigate("group_detail/${group.id}")
                                     },
-                                    emptyMessage = "You haven't joined any groups yet"
+                                    emptyMessage = "Anda belum bergabung dengan grup apapun"
                             )
                     1 ->
                             GroupList(
@@ -86,7 +86,7 @@ fun StudyGroupListScreen(navController: NavController, viewModel: StudyGroupView
                                     onGroupClick = { group ->
                                         navController.navigate("group_detail/${group.id}")
                                     },
-                                    emptyMessage = "No public groups available"
+                                    emptyMessage = "Tidak ada grup publik tersedia"
                             )
                 }
             }
@@ -102,13 +102,13 @@ fun StudyGroupListScreen(navController: NavController, viewModel: StudyGroupView
                 ) {
                     Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Create New Group")
+                    Text("Buat Grup Baru")
                 }
 
                 OutlinedButton(
                         onClick = { navController.navigate("join_group") },
                         modifier = Modifier.fillMaxWidth().height(50.dp)
-                ) { Text("Join Group with Code") }
+                ) { Text("Gabung Grup dengan Kode") }
             }
         }
     }
@@ -179,7 +179,7 @@ fun GroupCard(group: StudyGroup, onClick: () -> Unit) {
                             imageVector =
                                     if (group.isPublic) Icons.Default.Public
                                     else Icons.Default.Lock,
-                            contentDescription = if (group.isPublic) "Public" else "Private",
+                            contentDescription = if (group.isPublic) "Publik" else "Privat",
                             modifier = Modifier.size(16.dp),
                             tint =
                                     if (group.isPublic) MaterialTheme.colorScheme.primary

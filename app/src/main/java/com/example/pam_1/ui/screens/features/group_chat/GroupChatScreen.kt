@@ -161,10 +161,10 @@ fun GroupChatScreen(navController: NavController, groupId: Long) {
     Scaffold(
             topBar = {
                 TopAppBar(
-                        title = { Text("Group Chat") },
+                        title = { Text("Obrolan Grup") },
                         navigationIcon = {
                             IconButton(onClick = { navController.popBackStack() }) {
-                                Icon(Icons.Default.ArrowBack, "Back")
+                                Icon(Icons.Default.ArrowBack, "Kembali")
                             }
                         }
                 )
@@ -183,15 +183,15 @@ fun GroupChatScreen(navController: NavController, groupId: Long) {
                             verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Replying to", style = MaterialTheme.typography.labelSmall)
+                            Text("Membalas ke", style = MaterialTheme.typography.labelSmall)
                             Text(
-                                    replyMsg.content ?: "Image",
+                                    replyMsg.content ?: "Gambar",
                                     style = MaterialTheme.typography.bodySmall,
                                     maxLines = 1
                             )
                         }
                         IconButton(onClick = { replyToMessage = null }) {
-                            Icon(Icons.Default.Close, "Cancel reply")
+                            Icon(Icons.Default.Close, "Batal balas")
                         }
                     }
                 }
@@ -311,7 +311,7 @@ fun GroupChatScreen(navController: NavController, groupId: Long) {
                 ) {
                     // Image picker button
                     IconButton(onClick = { imagePickerLauncher.launch("image/*") }) {
-                        Icon(Icons.Default.Image, "Add image")
+                        Icon(Icons.Default.Image, "Tambah gambar")
                     }
 
                     // Text input
@@ -319,7 +319,7 @@ fun GroupChatScreen(navController: NavController, groupId: Long) {
                             value = messageText,
                             onValueChange = { messageText = it },
                             modifier = Modifier.weight(1f),
-                            placeholder = { Text("Type a message...") },
+                            placeholder = { Text("Ketik pesan...") },
                             maxLines = 4
                     )
 
@@ -340,7 +340,7 @@ fun GroupChatScreen(navController: NavController, groupId: Long) {
                                     color = MaterialTheme.colorScheme.onPrimary
                             )
                         } else {
-                            Icon(Icons.Default.Send, "Send")
+                            Icon(Icons.Default.Send, "Kirim")
                         }
                     }
                 }
@@ -352,7 +352,7 @@ fun GroupChatScreen(navController: NavController, groupId: Long) {
     if (showMessageMenu && selectedMessage != null) {
         AlertDialog(
                 onDismissRequest = { showMessageMenu = false },
-                title = { Text("Message Actions") },
+                title = { Text("Aksi Pesan") },
                 text = {
                     Column {
                         // Reply
@@ -365,7 +365,7 @@ fun GroupChatScreen(navController: NavController, groupId: Long) {
                         ) {
                             Icon(Icons.Default.Reply, null)
                             Spacer(Modifier.width(8.dp))
-                            Text("Reply")
+                            Text("Balas")
                         }
 
                         // Edit (only own messages within time window)
@@ -401,13 +401,13 @@ fun GroupChatScreen(navController: NavController, groupId: Long) {
                             ) {
                                 Icon(Icons.Default.Delete, null)
                                 Spacer(Modifier.width(8.dp))
-                                Text("Delete")
+                                Text("Hapus")
                             }
                         }
                     }
                 },
                 confirmButton = {
-                    TextButton(onClick = { showMessageMenu = false }) { Text("Cancel") }
+                    TextButton(onClick = { showMessageMenu = false }) { Text("Batal") }
                 }
         )
     }
@@ -416,7 +416,7 @@ fun GroupChatScreen(navController: NavController, groupId: Long) {
     if (showEditDialog && selectedMessage != null) {
         AlertDialog(
                 onDismissRequest = { showEditDialog = false },
-                title = { Text("Edit Message") },
+                title = { Text("Edit Pesan") },
                 text = {
                     OutlinedTextField(
                             value = editText,
@@ -430,10 +430,10 @@ fun GroupChatScreen(navController: NavController, groupId: Long) {
                                 selectedMessage?.id?.let { viewModel.editMessage(it, editText) }
                                 showEditDialog = false
                             }
-                    ) { Text("Save") }
+                    ) { Text("Simpan") }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showEditDialog = false }) { Text("Cancel") }
+                    TextButton(onClick = { showEditDialog = false }) { Text("Batal") }
                 }
         )
     }
@@ -445,16 +445,16 @@ fun GroupChatScreen(navController: NavController, groupId: Long) {
                     showImagePreview = false
                     selectedImage = null
                 },
-                title = { Text("Send Image") },
+                title = { Text("Kirim Gambar") },
                 text = {
                     Column {
                         // TODO: Show image preview
-                        Text("Image selected. Add caption?")
+                        Text("Gambar dipilih. Tambah keterangan?")
                         Spacer(Modifier.height(8.dp))
                         OutlinedTextField(
                                 value = messageText,
                                 onValueChange = { messageText = it },
-                                label = { Text("Caption (optional)") },
+                                label = { Text("Keterangan (opsional)") },
                                 modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -483,7 +483,7 @@ fun GroupChatScreen(navController: NavController, groupId: Long) {
                             )
                             Spacer(Modifier.width(8.dp))
                         }
-                        Text("Send")
+                        Text("Kirim")
                     }
                 },
                 dismissButton = {
@@ -492,7 +492,7 @@ fun GroupChatScreen(navController: NavController, groupId: Long) {
                                 showImagePreview = false
                                 selectedImage = null
                             }
-                    ) { Text("Cancel") }
+                    ) { Text("Batal") }
                 }
         )
     }
@@ -551,7 +551,7 @@ fun GroupChatScreen(navController: NavController, groupId: Long) {
                 ) {
                     Icon(
                             Icons.Default.Close,
-                            contentDescription = "Close",
+                            contentDescription = "Tutup",
                             tint = Color.White,
                             modifier = Modifier.size(32.dp)
                     )
