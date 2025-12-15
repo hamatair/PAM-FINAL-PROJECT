@@ -66,7 +66,7 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel) {
         verticalArrangement = Arrangement.Center
     ) {
         // Mengganti judul
-        Text("Masuk ke Supabase", style = MaterialTheme.typography.headlineMedium)
+        Text("Masuk ke Unify", style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(32.dp))
 
         OutlinedTextField(
