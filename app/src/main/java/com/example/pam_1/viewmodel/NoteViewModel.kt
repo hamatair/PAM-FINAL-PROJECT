@@ -52,7 +52,7 @@ class NoteViewModel(
     // =========================
     // LOAD DETAIL
     // =========================
-    fun loadNoteDetail(noteId: Long) { // Nama fungsi yang benar
+    fun loadNoteDetail(noteId: Long) {
         viewModelScope.launch {
             _noteDetailState.value = UiState.Loading
             try {
@@ -65,10 +65,6 @@ class NoteViewModel(
         }
     }
 
-    fun clearNoteDetail() {
-        _noteDetailState.value = UiState.Idle
-    }
-
     // =========================
     // ADD NOTE
     // =========================
@@ -76,12 +72,11 @@ class NoteViewModel(
         title: String,
         description: String,
         isPinned: Boolean,
-        imageBytes: ByteArray? // Dari Galeri
+        imageBytes: ByteArray?
     ) {
         viewModelScope.launch {
             _actionState.value = UiState.Loading
             try {
-                // Upload Image
                 val imageUrl = imageBytes?.let {
                     repository.uploadNoteImage(it)
                 }
@@ -111,8 +106,8 @@ class NoteViewModel(
         title: String,
         description: String,
         isPinned: Boolean,
-        imageBytes: ByteArray?, // Gambar baru dari Galeri
-        currentImageUrl: String? // URL gambar lama dari DB
+        imageBytes: ByteArray?,
+        currentImageUrl: String?
     ) {
         viewModelScope.launch {
             _actionState.value = UiState.Loading
@@ -120,18 +115,13 @@ class NoteViewModel(
             var newImageUrl: String? = currentImageUrl
 
             try {
-                // Jika ada gambar baru yang diupload
                 if (imageBytes != null) {
-                    // 1. Hapus gambar lama (jika ada)
                     if (currentImageUrl != null) {
                         repository.deleteNoteImage(currentImageUrl)
                     }
 
-                    // 2. Upload gambar baru
                     newImageUrl = repository.uploadNoteImage(imageBytes)
                 }
-
-                // Jika user memilih untuk menghapus gambar, perlu ada logika di sini (saat ini diasumsikan tidak bisa menghapus, hanya mengganti atau tidak mengganti)
 
                 val updatedNote = Note(
                     id = noteId,
@@ -160,10 +150,8 @@ class NoteViewModel(
             try {
                 repository.updatePinned(noteId, isPinned)
 
-                // Refresh data list agar urutan berubah
                 loadNotes()
 
-                // Update state detail
                 val currentDetail = _noteDetailState.value
                 if (currentDetail is UiState.Success && currentDetail.data?.id == noteId) {
                     _noteDetailState.value = UiState.Success(
@@ -184,15 +172,12 @@ class NoteViewModel(
         viewModelScope.launch {
             _actionState.value = UiState.Loading
             try {
-                // Ambil detail dulu untuk mendapatkan URL gambar
                 val noteToDelete = repository.getNoteById(noteId)
 
-                // 1. Hapus gambar dari Storage (jika ada)
                 noteToDelete?.imageUrl?.let {
                     repository.deleteNoteImage(it)
                 }
 
-                // 2. Hapus entry dari PostgREST
                 repository.deleteNote(noteId)
 
                 _actionState.value =
@@ -204,9 +189,5 @@ class NoteViewModel(
                     UiState.Error("Gagal menghapus note: ${e.message}")
             }
         }
-    }
-
-    fun resetActionState() {
-        _actionState.value = UiState.Idle
     }
 }

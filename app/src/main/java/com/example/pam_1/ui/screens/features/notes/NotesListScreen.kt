@@ -15,8 +15,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox // Import yang dibutuhkan
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState // Import yang dibutuhkan
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,16 +49,9 @@ fun NotesListScreen(
 
     fun onRefresh() {
         isRefreshing = true
-        viewModel.loadNotes() // Panggil fungsi untuk memuat ulang data
-        // Catatan: Setelah pemuatan selesai (Success atau Error), Anda perlu
-        // mengatur isRefreshing kembali ke false. Ini biasanya dilakukan di
-        // ViewModel, tetapi karena state-nya di sini, kita akan mengandalkan
-        // perubahan state UiState.Success/Error di bawah.
+        viewModel.loadNotes()
     }
-    // ---------------------------------------------
 
-    // Jika terjadi perubahan state dari Loading menjadi Success/Error,
-    // asumsikan proses refresh selesai.
     LaunchedEffect(noteState) {
         if (noteState !is UiState.Loading && isRefreshing) {
             isRefreshing = false
@@ -68,7 +61,6 @@ fun NotesListScreen(
     LaunchedEffect(Unit) {
         viewModel.loadNotes()
     }
-    // ==========================================
 
     var selectedNote by remember { mutableStateOf<Note?>(null) }
     val sheetState = rememberModalBottomSheetState()
@@ -84,8 +76,6 @@ fun NotesListScreen(
             ) { Icon(Icons.Default.Add, "Tambah") }
         }
     ) { innerPadding ->
-
-        // --- Pembungkus dengan PullToRefreshBox ---
         PullToRefreshBox(
             isRefreshing = isRefreshing,
             onRefresh = { onRefresh() },
@@ -99,15 +89,12 @@ fun NotesListScreen(
             ) {
 
                 when (noteState) {
-                    // Saat IDLE (belum load) atau LOADING, tampilkan loading
                     is UiState.Idle, is UiState.Loading -> {
-                        // Tampilkan indikator loading hanya jika BUKAN sedang Pull to Refresh
                         if (!isRefreshing) {
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 CircularProgressIndicator()
                             }
                         }
-                        // Jika isRefreshing true, PullToRefreshBox sudah menampilkan indikatornya di atas.
                     }
 
                     is UiState.Success -> {
@@ -149,7 +136,6 @@ fun NotesListScreen(
                 }
             }
         }
-        // --------------------------------------------
 
         // ===== LOGIKA BOTTOM SHEET (MENU BAWAH) =====
         if (selectedNote != null) {
@@ -159,7 +145,6 @@ fun NotesListScreen(
                 containerColor = MaterialTheme.colorScheme.surface,
                 contentColor = MaterialTheme.colorScheme.onSurface
             ) {
-                // ... (Kode BottomSheet tidak diubah) ...
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()

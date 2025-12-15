@@ -63,14 +63,11 @@ class NoteRepository(private val supabase: SupabaseClient) {
     // =========================
     suspend fun createNote(note: Note) {
         val currentUser = supabase.auth.currentUserOrNull()
-         Log.d("DEBUG_REPO", "Current User: $currentUser") // Boleh dihapus nanti
+         Log.d("DEBUG_REPO", "Current User: $currentUser")
 
         val userId = currentUser?.id
             ?: throw Exception("User belum login")
 
-        // SOLUSI: Jangan pakai Map manual. Pakai object Note langsung.
-        // Kita copy object note yang dikirim, lalu isi userId-nya.
-        // Biarkan id, createdAt, updatedAt tetap null agar Database yang mengisinya (Auto Increment).
         val noteToUpload = note.copy(
             userId = userId,
             id = null,
@@ -97,16 +94,8 @@ class NoteRepository(private val supabase: SupabaseClient) {
     suspend fun updateNote(noteId: Long, note: Note) {
         val userId = supabase.auth.currentUserOrNull()?.id
             ?: throw Exception("User belum login")
-
-        // Kita buat object baru untuk dikirim.
-        // PENTING: Jangan kirim id di body update jika tidak perlu,
-        // tapi supabase-kt butuh object Note yang valid.
-        // Kita set updatedAt ke null agar trigger DB (jika ada) atau ignore berfungsi,
-        // TAPI lebih aman kita kirim data yang ingin diubah saja jika pakai object.
-
         val noteToUpdate = note.copy(
             userId = userId,
-            // Pastikan ID diset agar serialisasi lancar (meski filter pakai eq id)
             id = noteId
         )
 
@@ -118,7 +107,6 @@ class NoteRepository(private val supabase: SupabaseClient) {
                 }
             }
         } catch (e: Exception) {
-            // Log error agar ketahuan jika gagal
             android.util.Log.e("NoteRepository", "Gagal Update Note: ${e.message}")
             throw e
         }
@@ -130,20 +118,11 @@ class NoteRepository(private val supabase: SupabaseClient) {
     // Fungsi untuk menghapus file dari Supabase Storage berdasarkan URL-nya
     suspend fun deleteNoteImage(imageUrl: String) = withContext(Dispatchers.IO) {
         if (imageUrl.isBlank()) return@withContext
-
-        // Format URL Supabase: .../storage/v1/object/notes/nama_file.jpg
-        // Kita hanya butuh 'nama_file.jpg' untuk path deletion
-
-        // Asumsi bucket Anda bernama "notes" (sesuai log error Anda)
         val path = imageUrl.substringAfter("/notes/")
-
         try {
-            // Perintah delete di bucket "notes"
             supabase.storage["notes"].delete(listOf(path))
             Log.d("NoteRepository", "Gambar lama berhasil dihapus: $path")
         } catch (e: Exception) {
-            // Penting: Jika gagal hapus (misal file sudah tidak ada),
-            // kita log error tapi TIDAK perlu throw exception agar proses update data tetap berjalan.
             Log.e("NoteRepository", "Gagal menghapus gambar lama: ${e.message}")
         }
     }
@@ -156,12 +135,6 @@ class NoteRepository(private val supabase: SupabaseClient) {
             ?: throw Exception("User belum login")
 
         try {
-            // Gunakan mapOf untuk update parsial (hanya 1 kolom)
-            // Ini biasanya LEBIH AMAN untuk switch toggle
-            // Tapi pastikan value-nya tidak Any? yang membingungkan serializer.
-            // Kita bungkus jadi JsonElement atau biarkan library menghandle primitive types.
-
-            // CARA PALING AMAN: Update pakai Map string-to-primitive
             supabase.postgrest["notes"].update(
                 mapOf("is_pinned" to pinned)
             ) {

@@ -39,7 +39,6 @@ import com.example.pam_1.viewmodel.UiState
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReadNoteScreen(
-    // Mengubah parameter menjadi Note ID dan NoteViewModel
     noteId: Long,
     viewModel: NoteViewModel,
     onEditNote: (Long) -> Unit,
@@ -47,41 +46,30 @@ fun ReadNoteScreen(
     onPinToggle: (Boolean) -> Unit,
     onDelete: (Long) -> Unit
 ) {
-    // 1. Mengamati state detail dari ViewModel
     val noteDetailState by viewModel.noteDetailState.collectAsState()
-
-    // 2. State Pull to Refresh
     val pullRefreshState = rememberPullToRefreshState()
     var isRefreshing by remember { mutableStateOf(false) }
 
-    // 3. Pemicu Awal dan Refresh
     LaunchedEffect(noteId) {
         viewModel.loadNoteDetail(noteId)
     }
 
-    // 4. Logika onRefresh
     fun onRefresh() {
         isRefreshing = true
-        viewModel.loadNoteDetail(noteId) // Panggil fungsi dengan nama yang benar
+        viewModel.loadNoteDetail(noteId)
     }
 
-    // 5. Menghentikan indikator refresh ketika state berubah (Sukses/Gagal)
     LaunchedEffect(noteDetailState) {
         if (noteDetailState !is UiState.Loading && isRefreshing) {
             isRefreshing = false
         }
     }
 
-    // 6. Tentukan Note yang ditampilkan (atau null jika Loading/Error)
     val currentNote = (noteDetailState as? UiState.Success)?.data
-
-    // State UI lokal yang bergantung pada currentNote
     var isPinned by remember(currentNote) { mutableStateOf(currentNote?.isPinned ?: false) }
     val displayDate = (currentNote?.updatedAt ?: currentNote?.createdAt)?.substringBefore("T") ?: ""
-
     var showDeleteDialog by remember { mutableStateOf(false) }
 
-    // Jika note belum dimuat atau error, tampilkan loading/error di tengah layar.
     if (noteDetailState is UiState.Loading && currentNote == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
@@ -96,10 +84,7 @@ fun ReadNoteScreen(
         return
     }
 
-    // Jika currentNote null, artinya data belum tersedia atau telah dihapus, navigasi kembali
     if (currentNote == null) {
-        // Dalam kasus nyata, mungkin perlu Toast dan onBack()
-        // Untuk demo, kita abaikan dan fokus pada tampilan sukses/loading
         return
     }
 
@@ -118,12 +103,10 @@ fun ReadNoteScreen(
                     }
                 },
                 actions = {
-                    // DELETE ICON
                     IconButton(onClick = { showDeleteDialog = true }) {
                         Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
                     }
 
-                    // PIN ICON
                     IconButton(onClick = {
                         isPinned = !isPinned
                         onPinToggle(isPinned)
@@ -150,8 +133,6 @@ fun ReadNoteScreen(
             }
         }
     ) { innerPadding ->
-
-        // --- Pembungkus dengan PullToRefreshBox ---
         PullToRefreshBox(
             isRefreshing = isRefreshing,
             onRefresh = { onRefresh() },
@@ -161,7 +142,6 @@ fun ReadNoteScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    // Hanya izinkan scroll jika tidak sedang loading (pull to refresh hanya untuk scrollable content)
                     .verticalScroll(rememberScrollState())
                     .background(MaterialTheme.colorScheme.background)
             ) {
@@ -209,7 +189,6 @@ fun ReadNoteScreen(
         }
     }
 
-    // KOTAK DIALOG KONFIRMASI HAPUS
     if (showDeleteDialog && currentNote.id != null) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
