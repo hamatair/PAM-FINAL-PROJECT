@@ -1,6 +1,7 @@
 package com.example.pam_1.ui.screens
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
@@ -29,6 +30,8 @@ import com.example.pam_1.viewmodel.*
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.res.painterResource
+import com.example.pam_1.R
 
 // ==========================
 // TOP APP BAR
@@ -48,11 +51,29 @@ private fun AppToolbar(navController: NavController) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Bottom
         ) {
-            Text(
-                text = "PAM App",
-                style = MaterialTheme.typography.titleLarge
-            )
+            // **BAGIAN KIRI: Icon Aplikasi dan Nama Aplikasi**
+            Row(
+                verticalAlignment = Alignment.CenterVertically // Pusatkan logo dan teks secara vertikal
+            ) {
+                // 1. Icon Aplikasi (Logo)
+                // Kita gunakan painterResource dan merujuk ke drawable app_logo
+                Image(
+                    painter = painterResource(id = R.drawable.app_logo), // <-- INI YANG DITAMBAHKAN
+                    contentDescription = "App Logo",
+                    modifier = Modifier
+                        .size(32.dp) // Ukuran icon, sesuaikan jika perlu
+                )
 
+                Spacer(modifier = Modifier.width(8.dp)) // Jarak antara logo dan teks
+
+                // 2. Nama Aplikasi (Teks)
+                Text(
+                    text = "Unify",
+                    style = MaterialTheme.typography.titleLarge
+                )
+            }
+
+            // **BAGIAN KANAN: Icon Profil (Tidak Berubah)**
             IconButton(
                 onClick = { navController.navigateSafe("profile") }
             ) {
@@ -63,7 +84,6 @@ private fun AppToolbar(navController: NavController) {
             }
         }
     }
-}
 
 // ==========================
 // MAIN APP SCREEN (FINAL MERGE)
@@ -201,4 +221,5 @@ fun MainAppScreen(
             }
         }
     }
+}
 }

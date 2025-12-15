@@ -136,7 +136,7 @@ fun EventCard(
                     Text(
                         text = formatCreatedAt(event.createdAt),
                         style = MaterialTheme.typography.labelSmall,
-                        color = TextGray
+                        color = Color.White
                     )
                 }
             }

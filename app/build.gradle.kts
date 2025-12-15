@@ -102,6 +102,7 @@ dependencies {
     implementation(libs.androidx.compiler)
     implementation(libs.androidx.compose.foundation)
     implementation("com.google.accompanist:accompanist-pager:0.30.1")
+    implementation(libs.androidx.ui)
 
     // Testing
     testImplementation(libs.junit)

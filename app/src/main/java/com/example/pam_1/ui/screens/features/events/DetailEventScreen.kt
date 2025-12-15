@@ -185,8 +185,14 @@ fun EventDetailContent(
                 Spacer(modifier = Modifier.height(16.dp))
                 // -- Kategori --
                 if (event.categoryPivots?.isNotEmpty() == true) {
-                    Row(
+
+                    // GANTI DARI Row MENJADI FlowRow
+                    @OptIn(ExperimentalLayoutApi::class) // Perlu anotasi untuk FlowRow
+                    FlowRow(
+                        // Sama seperti horizontalArrangement pada Row
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        // Kita juga bisa menambahkan jarak vertikal antar baris
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.padding(bottom = 12.dp)
                     ) {
                         event.categoryPivots.forEach { pivot ->
