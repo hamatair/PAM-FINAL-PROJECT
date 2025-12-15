@@ -165,9 +165,10 @@ class StudyGroupViewModel(
                     .getGroupById(groupId)
                     .onSuccess { group ->
                         selectedGroup = group
+                        // Set member count from group object (maintained by DB trigger)
+                        memberCount = group.memberCount
                         loadGroupMembers(groupId)
                         loadCurrentUserRole(groupId)
-                        loadMemberCount(groupId)
                         uiState = StudyGroupUIState.Idle
                     }
                     .onFailure { e ->
@@ -344,10 +345,8 @@ class StudyGroupViewModel(
                         uiState = StudyGroupUIState.Success("Joined group successfully")
                         loadMyGroups()
                         loadPublicGroups()
-                        // Reload group details to update UI
-                        loadCurrentUserRole(groupId)
-                        loadMemberCount(groupId)
-                        loadGroupMembers(groupId)
+                        // Reload group details to get updated member count from DB
+                        loadGroupById(groupId)
                     }
                     .onFailure { e ->
                         uiState = StudyGroupUIState.Error(e.message ?: "Failed to join group")

@@ -54,17 +54,17 @@ fun InviteManagementScreen(
     Scaffold(
             topBar = {
                 TopAppBar(
-                        title = { Text("Manage Invites") },
+                        title = { Text("Kelola Undangan") },
                         navigationIcon = {
                             IconButton(onClick = { navController.popBackStack() }) {
-                                Icon(Icons.Default.ArrowBack, "Back")
+                                Icon(Icons.Default.ArrowBack, "Kembali")
                             }
                         }
                 )
             },
             floatingActionButton = {
                 FloatingActionButton(onClick = { showCreateDialog = true }) {
-                    Icon(Icons.Default.Add, "Create Invite")
+                    Icon(Icons.Default.Add, "Buat Undangan")
                 }
             }
     ) { paddingValues ->
@@ -83,12 +83,12 @@ fun InviteManagementScreen(
                     )
                     Spacer(Modifier.height(16.dp))
                     Text(
-                            "No invites yet",
+                            "Belum ada undangan",
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                            "Create an invite to share with others",
+                            "Buat undangan untuk dibagikan kepada orang lain",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -162,7 +162,7 @@ fun InviteCard(invite: GroupInvite, onDeactivate: () -> Unit) {
                 if (isInactive) {
                     AssistChip(
                             onClick = {},
-                            label = { Text("Inactive") },
+                            label = { Text("Tidak Aktif") },
                             colors =
                                     AssistChipDefaults.assistChipColors(
                                             containerColor =
@@ -173,7 +173,7 @@ fun InviteCard(invite: GroupInvite, onDeactivate: () -> Unit) {
                 } else {
                     AssistChip(
                             onClick = {},
-                            label = { Text("Active") },
+                            label = { Text("Aktif") },
                             colors =
                                     AssistChipDefaults.assistChipColors(
                                             containerColor =
@@ -191,7 +191,7 @@ fun InviteCard(invite: GroupInvite, onDeactivate: () -> Unit) {
             ) {
                 Column {
                     Text(
-                            "Usage: ${invite.usedCount}/${if (invite.maxUses == 0) "∞" else invite.maxUses}",
+                            "Penggunaan: ${invite.usedCount}/${if (invite.maxUses == 0) "∞" else invite.maxUses}",
                             style = MaterialTheme.typography.bodyMedium
                     )
 
@@ -201,7 +201,7 @@ fun InviteCard(invite: GroupInvite, onDeactivate: () -> Unit) {
                                         .withZone(ZoneId.systemDefault())
                         val dateStr = formatter.format(Instant.parse(expiresAt))
                         Text(
-                                "Expires: $dateStr",
+                                "Kedaluwarsa: $dateStr",
                                 style = MaterialTheme.typography.bodySmall,
                                 color =
                                         if (isExpired) {
@@ -228,7 +228,7 @@ fun InviteCard(invite: GroupInvite, onDeactivate: () -> Unit) {
                     ) {
                         Icon(Icons.Default.QrCode, null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("QR Code")
+                        Text("Kode QR")
                     }
 
                     OutlinedButton(
@@ -241,7 +241,7 @@ fun InviteCard(invite: GroupInvite, onDeactivate: () -> Unit) {
                     ) {
                         Icon(Icons.Default.Cancel, null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("Deactivate")
+                        Text("Nonaktifkan")
                     }
                 }
             }
@@ -251,18 +251,18 @@ fun InviteCard(invite: GroupInvite, onDeactivate: () -> Unit) {
     if (showDeactivateDialog) {
         AlertDialog(
                 onDismissRequest = { showDeactivateDialog = false },
-                title = { Text("Deactivate Invite") },
-                text = { Text("Are you sure you want to deactivate this invite code?") },
+                title = { Text("Nonaktifkan Undangan") },
+                text = { Text("Apakah Anda yakin ingin menonaktifkan kode undangan ini?") },
                 confirmButton = {
                     TextButton(
                             onClick = {
                                 onDeactivate()
                                 showDeactivateDialog = false
                             }
-                    ) { Text("Deactivate") }
+                    ) { Text("Nonaktifkan") }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showDeactivateDialog = false }) { Text("Cancel") }
+                    TextButton(onClick = { showDeactivateDialog = false }) { Text("Batal") }
                 }
         )
     }
@@ -279,17 +279,17 @@ fun CreateInviteDialog(
 
     AlertDialog(
             onDismissRequest = onDismiss,
-            title = { Text("Create Invite Code") },
+            title = { Text("Buat Kode Undangan") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     // Max Uses
                     Column {
-                        Text("Maximum Uses", style = MaterialTheme.typography.titleSmall)
+                        Text("Penggunaan Maksimal", style = MaterialTheme.typography.titleSmall)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             FilterChip(
                                     selected = selectedMaxUses == 1,
                                     onClick = { selectedMaxUses = 1 },
-                                    label = { Text("1 (Single-use)") }
+                                    label = { Text("1 (Sekali pakai)") }
                             )
                             FilterChip(
                                     selected = selectedMaxUses == 5,
@@ -299,7 +299,7 @@ fun CreateInviteDialog(
                             FilterChip(
                                     selected = selectedMaxUses == 0,
                                     onClick = { selectedMaxUses = 0 },
-                                    label = { Text("Unlimited") }
+                                    label = { Text("Tanpa Batas") }
                             )
                         }
                     }
@@ -311,12 +311,15 @@ fun CreateInviteDialog(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("Expiry", style = MaterialTheme.typography.titleSmall)
+                            Text("Kedaluwarsa", style = MaterialTheme.typography.titleSmall)
                             Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                Text("No expiry", style = MaterialTheme.typography.bodySmall)
+                                Text(
+                                        "Tidak kedaluwarsa",
+                                        style = MaterialTheme.typography.bodySmall
+                                )
                                 Switch(checked = noExpiry, onCheckedChange = { noExpiry = it })
                             }
                         }
@@ -326,17 +329,17 @@ fun CreateInviteDialog(
                                 FilterChip(
                                         selected = selectedExpiry == 1,
                                         onClick = { selectedExpiry = 1 },
-                                        label = { Text("1 day") }
+                                        label = { Text("1 hari") }
                                 )
                                 FilterChip(
                                         selected = selectedExpiry == 7,
                                         onClick = { selectedExpiry = 7 },
-                                        label = { Text("7 days") }
+                                        label = { Text("7 hari") }
                                 )
                                 FilterChip(
                                         selected = selectedExpiry == 30,
                                         onClick = { selectedExpiry = 30 },
-                                        label = { Text("30 days") }
+                                        label = { Text("30 hari") }
                                 )
                             }
                         }
@@ -348,8 +351,8 @@ fun CreateInviteDialog(
                         onClick = {
                             onCreate(selectedMaxUses, if (noExpiry) null else selectedExpiry)
                         }
-                ) { Text("Create") }
+                ) { Text("Buat") }
             },
-            dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+            dismissButton = { TextButton(onClick = onDismiss) { Text("Batal") } }
     )
 }

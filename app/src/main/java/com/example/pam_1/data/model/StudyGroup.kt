@@ -12,6 +12,7 @@ data class StudyGroup(
         @SerialName("course") val course: String? = null,
         @SerialName("is_public") val isPublic: Boolean = false,
         @SerialName("image_url") val imageUrl: String? = null,
+        @SerialName("member_count") val memberCount: Int = 0, // Auto-updated by database trigger
         @SerialName("created_at") val createdAt: String? = null,
         @SerialName("updated_at") val updatedAt: String? = null
 )

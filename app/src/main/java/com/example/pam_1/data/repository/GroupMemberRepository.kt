@@ -6,6 +6,7 @@ import com.example.pam_1.data.model.GroupRole
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
+import io.github.jan.supabase.postgrest.query.Count
 import io.github.jan.supabase.postgrest.query.Order
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -231,8 +232,16 @@ class GroupMemberRepository {
     suspend fun getMemberCount(groupId: Long): Result<Int> =
             withContext(Dispatchers.IO) {
                 try {
-                    val members = getGroupMembers(groupId).getOrThrow()
-                    Result.success(members.size)
+                    // Use count query instead of fetching all members
+                    // This allows non-members to see member count for public groups
+                    val response =
+                            client.from("group_members").select {
+                                filter { eq("group_id", groupId) }
+                                count(Count.EXACT)
+                            }
+
+                    val count = response.countOrNull()?.toInt() ?: 0
+                    Result.success(count)
                 } catch (e: Exception) {
                     Result.failure(e)
                 }
