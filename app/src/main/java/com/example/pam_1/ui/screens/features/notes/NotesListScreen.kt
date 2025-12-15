@@ -15,6 +15,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox // Import yang dibutuhkan
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState // Import yang dibutuhkan
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,17 +43,34 @@ fun NotesListScreen(
 ) {
     val noteState by viewModel.noteListState.collectAsState()
 
-    // Setiap kali layar ini masuk komposisi (ditampilkan),
-    // panggil loadNotes() untuk mengambil data terbaru.
-    // 'Unit' berarti hanya dijalankan sekali saat layar pertama kali muncul.
+    // --- Tambahkan State untuk Pull to Refresh ---
+    val pullRefreshState = rememberPullToRefreshState()
+    var isRefreshing by remember { mutableStateOf(false) }
+
+    fun onRefresh() {
+        isRefreshing = true
+        viewModel.loadNotes() // Panggil fungsi untuk memuat ulang data
+        // Catatan: Setelah pemuatan selesai (Success atau Error), Anda perlu
+        // mengatur isRefreshing kembali ke false. Ini biasanya dilakukan di
+        // ViewModel, tetapi karena state-nya di sini, kita akan mengandalkan
+        // perubahan state UiState.Success/Error di bawah.
+    }
+    // ---------------------------------------------
+
+    // Jika terjadi perubahan state dari Loading menjadi Success/Error,
+    // asumsikan proses refresh selesai.
+    LaunchedEffect(noteState) {
+        if (noteState !is UiState.Loading && isRefreshing) {
+            isRefreshing = false
+        }
+    }
+
     LaunchedEffect(Unit) {
         viewModel.loadNotes()
     }
     // ==========================================
 
-    // State untuk menyimpan Note mana yang sedang ditekan lama
     var selectedNote by remember { mutableStateOf<Note?>(null) }
-
     val sheetState = rememberModalBottomSheetState()
     val scope = rememberCoroutineScope()
 
@@ -66,60 +85,71 @@ fun NotesListScreen(
         }
     ) { innerPadding ->
 
-        Column(
-            modifier = Modifier
-                .padding(innerPadding)
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
+        // --- Pembungkus dengan PullToRefreshBox ---
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = { onRefresh() },
+            state = pullRefreshState,
+            modifier = Modifier.padding(innerPadding)
         ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+            ) {
 
-            when (noteState) {
-                // Saat IDLE (belum load) atau LOADING, tampilkan loading
-                is UiState.Idle, is UiState.Loading -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
-                }
-
-                is UiState.Success -> {
-                    val notes = (noteState as UiState.Success<List<Note>>).data
-
-                    if (notes.isEmpty()) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            // Perbaikan wording sesuai request sebelumnya
-                            Text("Belum memiliki catatan")
+                when (noteState) {
+                    // Saat IDLE (belum load) atau LOADING, tampilkan loading
+                    is UiState.Idle, is UiState.Loading -> {
+                        // Tampilkan indikator loading hanya jika BUKAN sedang Pull to Refresh
+                        if (!isRefreshing) {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator()
+                            }
                         }
-                    } else {
-                        LazyVerticalStaggeredGrid(
-                            columns = StaggeredGridCells.Fixed(2),
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(12.dp),
-                            verticalItemSpacing = 12.dp,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            items(notes) { note ->
-                                NoteCard(
-                                    note = note,
-                                    onClick = { note.id?.let { onNoteClick(it) } },
-                                    onLongClick = {
-                                        selectedNote = note
-                                    }
-                                )
+                        // Jika isRefreshing true, PullToRefreshBox sudah menampilkan indikatornya di atas.
+                    }
+
+                    is UiState.Success -> {
+                        val notes = (noteState as UiState.Success<List<Note>>).data
+
+                        if (notes.isEmpty()) {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text("Belum memiliki catatan")
+                            }
+                        } else {
+                            LazyVerticalStaggeredGrid(
+                                columns = StaggeredGridCells.Fixed(2),
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(12.dp),
+                                verticalItemSpacing = 12.dp,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                items(notes) { note ->
+                                    NoteCard(
+                                        note = note,
+                                        onClick = { note.id?.let { onNoteClick(it) } },
+                                        onLongClick = {
+                                            selectedNote = note
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
-                }
 
-                is UiState.Error -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(
-                            text = (noteState as UiState.Error).message,
-                            color = Color.Red
-                        )
+                    is UiState.Error -> {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(
+                                text = (noteState as UiState.Error).message,
+                                color = Color.Red
+                            )
+                        }
                     }
                 }
             }
         }
+        // --------------------------------------------
 
         // ===== LOGIKA BOTTOM SHEET (MENU BAWAH) =====
         if (selectedNote != null) {
@@ -129,6 +159,7 @@ fun NotesListScreen(
                 containerColor = MaterialTheme.colorScheme.surface,
                 contentColor = MaterialTheme.colorScheme.onSurface
             ) {
+                // ... (Kode BottomSheet tidak diubah) ...
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -190,6 +221,7 @@ fun NoteCard(
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
+    // ... (Kode NoteCard tidak diubah) ...
     val rawDate = note.updatedAt ?: note.createdAt
     val displayDate = rawDate?.substringBefore("T") ?: ""
 

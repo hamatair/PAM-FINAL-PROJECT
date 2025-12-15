@@ -52,7 +52,7 @@ class NoteViewModel(
     // =========================
     // LOAD DETAIL
     // =========================
-    fun loadNoteDetail(noteId: Long) {
+    fun loadNoteDetail(noteId: Long) { // Nama fungsi yang benar
         viewModelScope.launch {
             _noteDetailState.value = UiState.Loading
             try {

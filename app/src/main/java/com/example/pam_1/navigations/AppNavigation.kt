@@ -166,22 +166,22 @@ fun AppNavigation() {
         }
 
         composable(
-                "note/read/{noteId}",
-                listOf(navArgument("noteId") { type = NavType.LongType })
+            "note/read/{noteId}",
+            listOf(navArgument("noteId") { type = NavType.LongType })
         ) {
             val id = it.arguments!!.getLong("noteId")
-            LaunchedEffect(id) { noteViewModel.loadNoteDetail(id) }
-
-            val state by noteViewModel.noteDetailState.collectAsState()
-            if (state is UiState.Success) {
-                ReadNoteScreen(
-                        note = (state as UiState.Success).data!!,
-                        onBack = { navController.popBackStackSafe() },
-                        onEditNote = { navController.navigateSafe("note/edit/$it") },
-                        onPinToggle = { p -> noteViewModel.updatePinStatus(id, p) },
-                        onDelete = { noteViewModel.deleteNote(it) }
-                )
-            }
+            ReadNoteScreen(
+                noteId = id,
+                viewModel = noteViewModel,
+                onBack = { navController.popBackStackSafe() },
+                onEditNote = { navController.navigateSafe("note/edit/$it") },
+                onPinToggle = { p -> noteViewModel.updatePinStatus(id, p) },
+                onDelete = {
+                    noteViewModel.deleteNote(it)
+                    // Setelah delete, kembali ke NotesListScreen
+                    navController.popBackStackSafe()
+                }
+            )
         }
 
         composable(

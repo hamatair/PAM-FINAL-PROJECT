@@ -274,6 +274,30 @@ fun TugasScreen(
                                 return@Button
                             }
 
+                            // --- MODIFIKASI DIMULAI DI SINI ---
+                            // Validasi untuk memastikan deadlineInput (Date) tidak kosong
+                            // Karena deadlineInput diinisialisasi dari kalender, secara default tidak akan kosong.
+                            // Jika Anda membiarkan pengguna mengosongkan, validasi ini relevan.
+                            if (deadlineInput.isBlank()) {
+                                Toast.makeText(
+                                    context,
+                                    "Tanggal Deadline tidak boleh kosong",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                                return@Button
+                            }
+
+                            // Validasi untuk memastikan timeInput tidak kosong
+                            if (timeInput.isBlank() || timeInput == "00:00") { // Tambahan: Cek jika terisi nilai yang tidak diinginkan, misalnya "00:00"
+                                Toast.makeText(
+                                    context,
+                                    "Waktu tidak boleh kosong",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                                return@Button
+                            }
+                            // --- MODIFIKASI BERAKHIR DI SINI ---
+
                             if (idEditing == null) {
                                 viewModel.addTugas(
                                     context = context,
